@@ -34,6 +34,11 @@ const CONFIG = {
     MOVIE: (id) => `https://player.videasy.net/movie/${id}?${CONFIG.VIDEASY_MOVIE_PARAMS}`,
     TV: (id, s, e) => `https://player.videasy.net/tv/${id}/${s}/${e}?${CONFIG.VIDEASY_TV_PARAMS}`
   },
+  // Mappl.tv - direct ID mapping, no embed path needed
+  EMBED_MAPPL: {
+    MOVIE: (id) => `https://mappl.tv/watch/movie/${id}`,
+    TV: (id, s, e) => `https://mappl.tv/watch/tv/${id}/${s}/${e}`
+  },
   // Default embed functions (Vidking globally)
   EMBED_MOVIE: (id) => `https://www.vidking.net/embed/movie/${id}?${CONFIG.VIDKING_MOVIE_PARAMS}`,
   EMBED_TV: (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?${CONFIG.VIDKING_TV_PARAMS}`,
@@ -268,9 +273,6 @@ const state = {
   bollywoodPage: 1,
   bollywoodFilter: 'popular',
   bollywoodGenre: null,
-  '4kPage': 1,
-  '4kFilter': 'popular',
-  '4kGenre': null,
   searchPage: 1,
   searchQuery: '',
   auth: {
@@ -291,8 +293,6 @@ const state = {
   tvLoading: false,
   kdramaHasMore: false,
   kdramaLoading: false,
-  '4kHasMore': false,
-  '4kLoading': false,
   motionIndex: 0,
   lastNonWatchHash: '#/home',
   lastPaginationCheck: 0
@@ -725,14 +725,14 @@ window.goToTvEpisodeFromWatch = function(id, season, episode) {
 };
 const DEFAULT_SETTINGS = {
   theme: 'cinematic',
-  preferred_source: 'vidking',
+  preferred_source: 'mappl',
   autoplay_next: true,
   auto_open_servers: false,
 };
 
 function normalizeSettings(input = {}) {
   const allowedThemes = new Set(['cinematic', 'midnight', 'light']);
-  const allowedSources = new Set(['vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
+  const allowedSources = new Set(['mappl', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
   return {
     theme: allowedThemes.has(input.theme) ? input.theme : DEFAULT_SETTINGS.theme,
     preferred_source: allowedSources.has(input.preferred_source) ? input.preferred_source : DEFAULT_SETTINGS.preferred_source,
@@ -773,12 +773,16 @@ function getEmbedUrlForSource(source, type, id, season = 1, episode = 1) {
   switch (source) {
     case 'vidking':
       return type === 'tv' ? CONFIG.EMBED_VIDKING.TV(id, season, episode) : CONFIG.EMBED_VIDKING.MOVIE(id);
+    case 'videasy':
+      return type === 'tv' ? CONFIG.EMBED_VIDEASY.TV(id, season, episode) : CONFIG.EMBED_VIDEASY.MOVIE(id);
     case 'vidplus':
       return type === 'tv' ? CONFIG.EMBED_VIDPLUS.TV(id, season, episode) : CONFIG.EMBED_VIDPLUS.MOVIE(id);
     case '111movies':
       return type === 'tv' ? CONFIG.EMBED_111MOVIES.TV(id, season, episode) : CONFIG.EMBED_111MOVIES.MOVIE(id);
     case 'cinezo':
       return type === 'tv' ? CONFIG.EMBED_CINEZO.TV(id, season, episode) : CONFIG.EMBED_CINEZO.MOVIE(id);
+    case 'mappl':
+      return type === 'tv' ? CONFIG.EMBED_MAPPL.TV(id, season, episode) : CONFIG.EMBED_MAPPL.MOVIE(id);
     default:
       return type === 'tv' ? CONFIG.EMBED_VIDKING.TV(id, season, episode) : CONFIG.EMBED_VIDKING.MOVIE(id);
   }
@@ -2054,11 +2058,6 @@ async function handleInfinitePagination() {
   if ($('#view-kdrama')?.classList.contains('active') && state.kdramaHasMore && !state.kdramaLoading) {
     state.kdramaPage += 1;
     await loadKDrama(true);
-     return;
-   }
-   if ($('#view-4k')?.classList.contains('active') && state['4kHasMore'] && !state['4kLoading']) {
-     state['4kPage'] += 1;
-     await load4K(true);
   }
 }
 
@@ -2089,17 +2088,6 @@ async function loadBollywood(append = false) {
     state.movieGenres = g.genres;
   }
   renderGenreBar($('#bollywoodGenres'), state.movieGenres, state.bollywoodGenre, 'bollywood');
-}
-
-/* ---------- 4K Content Page ---------- */
-async function load4K(append = false) {
-  if (!append) showView('4k');
-
-  const frame = $('#fourkFrame');
-  if (frame && frame.dataset.loaded !== 'true') {
-    frame.dataset.loaded = 'true';
-    frame.src = 'https://mappl.tv/4k-contents';
-  }
 }
 
 /* ---------- Marvel Page ---------- */
@@ -2538,11 +2526,12 @@ async function loadWatch(type, id, season = 1, episode = 1) {
         <span class="watch-panel-sub">select provider</span>
       </div>
       <div class="server-grid">
+        <button class="server-btn server-option ${selectedSource === 'mappl' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'mappl', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Mappl.tv</button>
         <button class="server-btn server-option ${selectedSource === 'vidking' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidking', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidKing</button>
+        <button class="server-btn server-option ${selectedSource === 'videasy' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'videasy', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Videasy</button>
         <button class="server-btn server-option ${selectedSource === 'vidplus' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidplus', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidPlus</button>
         <button class="server-btn server-option ${selectedSource === '111movies' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', '111movies', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">111Movies</button>
         <button class="server-btn server-option ${selectedSource === 'cinezo' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'cinezo', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Cinezo</button>
-        <button class="server-btn server-option ${selectedSource === 'videasy' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'videasy', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Videasy</button>
       </div>
     </section>
   `;
@@ -2978,13 +2967,6 @@ function route() {
       state.marvelPage = 1;
       loadMarvel();
       break;
-     case '4k':
-       setPageTitle('4K Ultra HD');
-       state['4kPage'] = 1;
-       state['4kFilter'] = 'popular';
-       state['4kGenre'] = null;
-       load4K();
-       break;
     default:
       setPageTitle('404');
       showView('404');
@@ -3033,6 +3015,30 @@ function setupEvents() {
   }
 
   // Filter clicks (Movies)
+  $('#movieFilters').addEventListener('click', (e) => {
+    if (!e.target.classList.contains('filter-chip')) return;
+    $$('#movieFilters .filter-chip').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    state.moviesFilter = e.target.dataset.filter;
+    state.moviesPage = 1;
+    state.moviesGenre = null;
+    loadMovies();
+  });
+
+  // Filter clicks (TV)
+  $('#tvFilters').addEventListener('click', (e) => {
+    if (!e.target.classList.contains('filter-chip')) return;
+    $$('#tvFilters .filter-chip').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    state.tvFilter = e.target.dataset.filter;
+    state.tvPage = 1;
+    state.tvGenre = null;
+    loadTV();
+  });
+
+  if ($('#animeFilters')) {
+    $('#animeFilters').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('filter-chip')) return;
       $$('#animeFilters .filter-chip').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       state.animeFilter = e.target.dataset.filter;
@@ -3102,30 +3108,6 @@ function setupEvents() {
     loadBollywood(true);
   });
 
-   // 4K Filters
-  $('#fourkFilters')?.addEventListener('click', (e) => {
-    if (!e.target.classList.contains('filter-chip')) return;
-    $$('#fourkFilters .filter-chip').forEach(b => b.classList.remove('active'));
-     e.target.classList.add('active');
-     state['4kFilter'] = e.target.dataset.filter;
-     state['4kPage'] = 1;
-     state['4kGenre'] = null;
-     load4K();
-   });
- 
-   // 4K Sort
-  $('#fourkSort')?.addEventListener('change', (e) => {
-     if (e.target.value) {
-       state['4kPage'] = 1;
-       load4K();
-     }
-   });
- 
-   // 4K Load More
-   $('#loadMore4K')?.addEventListener('click', () => {
-     state['4kPage']++;
-     load4K(true);
-   });
   // Infinite pagination scroll (heavily throttled to prevent layout thrashing)
   let lastInfiniteScroll = 0;
   window.addEventListener('scroll', () => {

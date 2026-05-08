@@ -38,7 +38,6 @@
         <li><a href="#/kdrama" class="nav-link" data-page="kdrama" role="menuitem">K-Drama</a></li>
         <li><a href="#/bollywood" class="nav-link" data-page="bollywood" role="menuitem">Bollywood</a></li>
         <li><a href="#/marvel" class="nav-link" data-page="marvel" role="menuitem">Marvel</a></li>
-        <li><a href="#/4k" class="nav-link" data-page="4k" role="menuitem">4K</a></li>
         <li><a href="#/watchlist" class="nav-link" data-page="watchlist" role="menuitem">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           Watchlist
@@ -314,30 +313,6 @@
       </div>
     </section>
 
-    <!-- 4K Content Page View -->
-    <section id="view-4k" class="view">
-      <div class="container page-top">
-        <div class="page-header">
-          <h1>📺 4K Ultra HD</h1>
-          <div class="header-controls">
-            <a class="btn-primary btn-sm" href="https://mappl.tv/4k-contents" target="_blank" rel="noopener noreferrer">Open in Mappl</a>
-          </div>
-        </div>
-        <p class="page-subtitle">Mappl's 4K section is embedded here so you can browse it directly without leaving the site.</p>
-        <div class="mappl-embed-shell">
-          <iframe
-            id="fourkFrame"
-            class="mappl-embed-frame"
-            src="https://mappl.tv/4k-contents"
-            title="Mappl 4K Content"
-            loading="lazy"
-            referrerpolicy="no-referrer"
-            allow="fullscreen"
-          ></iframe>
-        </div>
-      </div>
-    </section>
-
     <!-- Detail Page View -->
     <section id="view-detail" class="view">
       <div id="detailContent"></div>
@@ -482,6 +457,7 @@
         <label class="settings-item">
           <span class="settings-label">Preferred Player Source</span>
           <select id="settingsSource" class="sort-select">
+            <option value="mappl">Mappl.tv</option>
             <option value="vidking">VidKing</option>
             <option value="videasy">Videasy</option>
             <option value="cinezo">Cinezo</option>
@@ -523,6 +499,6 @@
   </button>
 
   <script src="mcu_timeline.js"></script>
-  <script src="script.js?v=20"></script>
+  <script src="script.js?v=17"></script>
 </body>
 </html>
