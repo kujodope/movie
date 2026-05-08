@@ -268,6 +268,9 @@ const state = {
   bollywoodPage: 1,
   bollywoodFilter: 'popular',
   bollywoodGenre: null,
+  '4kPage': 1,
+  '4kFilter': 'popular',
+  '4kGenre': null,
   searchPage: 1,
   searchQuery: '',
   auth: {
@@ -288,6 +291,8 @@ const state = {
   tvLoading: false,
   kdramaHasMore: false,
   kdramaLoading: false,
+  '4kHasMore': false,
+  '4kLoading': false,
   motionIndex: 0,
   lastNonWatchHash: '#/home',
   lastPaginationCheck: 0
@@ -2049,6 +2054,11 @@ async function handleInfinitePagination() {
   if ($('#view-kdrama')?.classList.contains('active') && state.kdramaHasMore && !state.kdramaLoading) {
     state.kdramaPage += 1;
     await loadKDrama(true);
+     return;
+   }
+   if ($('#view-4k')?.classList.contains('active') && state['4kHasMore'] && !state['4kLoading']) {
+     state['4kPage'] += 1;
+     await load4K(true);
   }
 }
 
@@ -2079,6 +2089,53 @@ async function loadBollywood(append = false) {
     state.movieGenres = g.genres;
   }
   renderGenreBar($('#bollywoodGenres'), state.movieGenres, state.bollywoodGenre, 'bollywood');
+}
+
+/* ---------- 4K Content Page ---------- */
+async function load4K(append = false) {
+  if (state['4kLoading']) return;
+  state['4kLoading'] = true;
+  if (!append) showView('4k');
+  if (!append) showGridSkeleton($('#4kGrid'));
+  
+  const params = { page: state['4kPage'], with_keywords: '263586' }; // 4K keyword
+  if (state['4kGenre']) params.with_genres = state['4kGenre'];
+  
+  let endpoint = '/discover/movie';
+  let type = 'movie';
+
+  if (state['4kFilter'] === 'popular') params.sort_by = 'popularity.desc';
+  if (state['4kFilter'] === 'top_rated') params.sort_by = 'vote_average.desc';
+  if (state['4kFilter'] === 'upcoming') { 
+    params.sort_by = 'popularity.desc';
+    params.primary_release_date_gte = new Date().toISOString().split('T')[0]; 
+  }
+
+  try {
+    const data = await tmdb(endpoint, params);
+    if (!data.results || data.results.length === 0) {
+      state['4kHasMore'] = false;
+      showEmptyState($('#4kGrid'), 'No 4K content found', '📺');
+      $('#loadMore4K').style.display = 'none';
+    } else {
+      renderCards($('#4kGrid'), data.results, type, append);
+      state['4kHasMore'] = state['4kPage'] < data.total_pages;
+      $('#loadMore4K').style.display = 'none';
+    }
+  } catch (e) {
+    state['4kHasMore'] = false;
+    console.error('4K load failed:', e);
+    showErrorState($('#4kGrid'), 'Failed to load 4K content');
+    $('#loadMore4K').style.display = 'none';
+  } finally {
+    state['4kLoading'] = false;
+  }
+
+  if (!state.movieGenres.length) {
+    const g = await tmdb('/genre/movie/list');
+    state.movieGenres = g.genres;
+  }
+  renderGenreBar($('#4kGenres'), state.movieGenres, state['4kGenre'], '4k');
 }
 
 /* ---------- Marvel Page ---------- */
@@ -2957,6 +3014,13 @@ function route() {
       state.marvelPage = 1;
       loadMarvel();
       break;
+     case '4k':
+       setPageTitle('4K Ultra HD');
+       state['4kPage'] = 1;
+       state['4kFilter'] = 'popular';
+       state['4kGenre'] = null;
+       load4K();
+       break;
     default:
       setPageTitle('404');
       showView('404');
@@ -3098,6 +3162,30 @@ function setupEvents() {
     loadBollywood(true);
   });
 
+   // 4K Filters
+   $('#4kFilters')?.addEventListener('click', (e) => {
+     if (!e.target.classList.contains('filter-chip')) return;
+     $$('#4kFilters .filter-chip').forEach(b => b.classList.remove('active'));
+     e.target.classList.add('active');
+     state['4kFilter'] = e.target.dataset.filter;
+     state['4kPage'] = 1;
+     state['4kGenre'] = null;
+     load4K();
+   });
+ 
+   // 4K Sort
+   $('#4kSort')?.addEventListener('change', (e) => {
+     if (e.target.value) {
+       state['4kPage'] = 1;
+       load4K();
+     }
+   });
+ 
+   // 4K Load More
+   $('#loadMore4K')?.addEventListener('click', () => {
+     state['4kPage']++;
+     load4K(true);
+   });
   // Infinite pagination scroll (heavily throttled to prevent layout thrashing)
   let lastInfiniteScroll = 0;
   window.addEventListener('scroll', () => {
