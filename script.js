@@ -289,7 +289,8 @@ const state = {
   kdramaHasMore: false,
   kdramaLoading: false,
   motionIndex: 0,
-  lastNonWatchHash: '#/home'
+  lastNonWatchHash: '#/home',
+  lastPaginationCheck: 0
 };
 
 let revealObserver = null;
@@ -1335,7 +1336,12 @@ function createSectionHeader(title, icon = 'popular', seeAllLink = null) {
 /* ---------- Render Helpers ---------- */
 function renderCards(container, items, type, append = false, isLandscape = false) {
   if (!append) container.innerHTML = '';
-  items.forEach(item => container.appendChild(createCard(item, type, isLandscape)));
+  
+  // Use DocumentFragment to batch DOM operations and prevent multiple reflows
+  const fragment = document.createDocumentFragment();
+  items.forEach(item => fragment.appendChild(createCard(item, type, isLandscape)));
+  container.appendChild(fragment);
+  
   assignTileAnimations(container);
 }
 
@@ -1604,7 +1610,7 @@ async function loadHome() {
 async function loadMovies(append = false) {
   if (state.moviesLoading) return;
   state.moviesLoading = true;
-  showView('movies');
+  if (!append) showView('movies');
   if (!append) showGridSkeleton($('#moviesGrid'));
   const params = { page: state.moviesPage };
   if (state.moviesGenre) params.with_genres = state.moviesGenre;
@@ -1649,7 +1655,7 @@ async function loadMovies(append = false) {
 async function loadTV(append = false) {
   if (state.tvLoading) return;
   state.tvLoading = true;
-  showView('tv');
+  if (!append) showView('tv');
   if (!append) showGridSkeleton($('#tvGrid'));
   const params = { page: state.tvPage };
   if (state.tvGenre) params.with_genres = state.tvGenre;
@@ -1691,7 +1697,7 @@ async function loadTV(append = false) {
 
 /* ---------- Anime Page ---------- */
 async function loadAnime(append = false) {
-  showView('anime');
+  if (!append) showView('anime');
   const grid = $('#animeGrid');
   if (!append) showGridSkeleton(grid);
 
@@ -1973,7 +1979,7 @@ window.setAnimeServer = function(index, id, episodeNum) {
 async function loadKDrama(append = false) {
   if (state.kdramaLoading) return;
   state.kdramaLoading = true;
-  showView('kdrama');
+  if (!append) showView('kdrama');
   if (!append) showGridSkeleton($('#kdramaGrid'));
   const params = { page: state.kdramaPage, with_origin_country: 'KR', with_original_language: 'ko' };
   if (state.kdramaGenre) params.with_genres = state.kdramaGenre;
@@ -2020,6 +2026,11 @@ async function loadKDrama(append = false) {
 }
 
 async function handleInfinitePagination() {
+  // Throttle scroll checks to max once per 500ms to prevent layout thrashing on fast scroll
+  const now = Date.now();
+  if (now - state.lastPaginationCheck < 500) return;
+  state.lastPaginationCheck = now;
+
   const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 900;
   if (!nearBottom) return;
 
@@ -2043,7 +2054,7 @@ async function handleInfinitePagination() {
 
 /* ---------- Bollywood Page ---------- */
 async function loadBollywood(append = false) {
-  showView('bollywood');
+  if (!append) showView('bollywood');
   if (!append) showGridSkeleton($('#bollywoodGrid'));
   const params = { page: state.bollywoodPage, with_origin_country: 'IN', with_original_language: 'hi' };
   if (state.bollywoodGenre) params.with_genres = state.bollywoodGenre;
@@ -2072,8 +2083,8 @@ async function loadBollywood(append = false) {
 
 /* ---------- Marvel Page ---------- */
 async function loadMarvel(append = false) {
-  showView('marvel');
-
+  if (!append) showView('marvel');
+  
   if (state.marvelTab === 'timeline') {
     $('#loadMoreMarvel').style.display = 'none';
     if (!append) $('#marvelGrid').innerHTML = '<div style="padding:40px;text-align:center;">Loading MCU Timeline...</div>';
@@ -2962,11 +2973,17 @@ window.goBackFromWatch = function() {
 function setupEvents() {
   // Navbar scroll + Back to top
   const backBtn = $('#backToTop');
+  let lastNavbarScrollCheck = 0;
+  
   window.addEventListener('scroll', () => {
+    const now = Date.now();
+    if (now - lastNavbarScrollCheck < 100) return;
+    lastNavbarScrollCheck = now;
+    
     const nav = $('#navbar');
     nav.classList.toggle('scrolled', window.scrollY > 50);
     if (backBtn) backBtn.classList.toggle('visible', window.scrollY > 500);
-  });
+  }, { passive: true });
   if (backBtn) backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
   // Mobile toggle
@@ -3081,7 +3098,12 @@ function setupEvents() {
     loadBollywood(true);
   });
 
+  // Infinite pagination scroll (heavily throttled to prevent layout thrashing)
+  let lastInfiniteScroll = 0;
   window.addEventListener('scroll', () => {
+    const now = Date.now();
+    if (now - lastInfiniteScroll < 500) return;
+    lastInfiniteScroll = now;
     handleInfinitePagination();
   }, { passive: true });
 
