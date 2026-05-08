@@ -2093,49 +2093,13 @@ async function loadBollywood(append = false) {
 
 /* ---------- 4K Content Page ---------- */
 async function load4K(append = false) {
-  if (state['4kLoading']) return;
-  state['4kLoading'] = true;
   if (!append) showView('4k');
-  if (!append) showGridSkeleton($('#fourkGrid'));
-  
-  const params = { page: state['4kPage'], with_keywords: '263586' }; // 4K keyword
-  if (state['4kGenre']) params.with_genres = state['4kGenre'];
-  
-  let endpoint = '/discover/movie';
-  let type = 'movie';
 
-  if (state['4kFilter'] === 'popular') params.sort_by = 'popularity.desc';
-  if (state['4kFilter'] === 'top_rated') params.sort_by = 'vote_average.desc';
-  if (state['4kFilter'] === 'upcoming') { 
-    params.sort_by = 'popularity.desc';
-    params.primary_release_date_gte = new Date().toISOString().split('T')[0]; 
+  const frame = $('#fourkFrame');
+  if (frame && frame.dataset.loaded !== 'true') {
+    frame.dataset.loaded = 'true';
+    frame.src = 'https://mappl.tv/4k-contents';
   }
-
-  try {
-    const data = await tmdb(endpoint, params);
-    if (!data.results || data.results.length === 0) {
-      state['4kHasMore'] = false;
-      showEmptyState($('#fourkGrid'), 'No 4K content found', '📺');
-      $('#loadMore4K').style.display = 'none';
-    } else {
-      renderCards($('#fourkGrid'), data.results, type, append);
-      state['4kHasMore'] = state['4kPage'] < data.total_pages;
-      $('#loadMore4K').style.display = 'none';
-    }
-  } catch (e) {
-    state['4kHasMore'] = false;
-    console.error('4K load failed:', e);
-    showErrorState($('#fourkGrid'), 'Failed to load 4K content');
-    $('#loadMore4K').style.display = 'none';
-  } finally {
-    state['4kLoading'] = false;
-  }
-
-  if (!state.movieGenres.length) {
-    const g = await tmdb('/genre/movie/list');
-    state.movieGenres = g.genres;
-  }
-  renderGenreBar($('#fourkGenres'), state.movieGenres, state['4kGenre'], '4k');
 }
 
 /* ---------- Marvel Page ---------- */
@@ -3069,30 +3033,6 @@ function setupEvents() {
   }
 
   // Filter clicks (Movies)
-  $('#movieFilters').addEventListener('click', (e) => {
-    if (!e.target.classList.contains('filter-chip')) return;
-    $$('#movieFilters .filter-chip').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-    state.moviesFilter = e.target.dataset.filter;
-    state.moviesPage = 1;
-    state.moviesGenre = null;
-    loadMovies();
-  });
-
-  // Filter clicks (TV)
-  $('#tvFilters').addEventListener('click', (e) => {
-    if (!e.target.classList.contains('filter-chip')) return;
-    $$('#tvFilters .filter-chip').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-    state.tvFilter = e.target.dataset.filter;
-    state.tvPage = 1;
-    state.tvGenre = null;
-    loadTV();
-  });
-
-  if ($('#animeFilters')) {
-    $('#animeFilters').addEventListener('click', (e) => {
-      if (!e.target.classList.contains('filter-chip')) return;
       $$('#animeFilters .filter-chip').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       state.animeFilter = e.target.dataset.filter;

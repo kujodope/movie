@@ -320,24 +320,21 @@
         <div class="page-header">
           <h1>📺 4K Ultra HD</h1>
           <div class="header-controls">
-            <div class="filter-bar" id="fourkFilters">
-              <button class="filter-chip active" data-filter="popular">Popular</button>
-              <button class="filter-chip" data-filter="top_rated">Top Rated</button>
-              <button class="filter-chip" data-filter="upcoming">Upcoming</button>
-            </div>
-            <select class="sort-select" id="fourkSort" aria-label="Sort 4K content">
-              <option value="">Sort by</option>
-              <option value="vote_average.desc">Rating ↓</option>
-              <option value="vote_average.asc">Rating ↑</option>
-              <option value="release_date.desc">Newest</option>
-              <option value="release_date.asc">Oldest</option>
-              <option value="popularity.desc">Most Popular</option>
-            </select>
+            <a class="btn-primary btn-sm" href="https://mappl.tv/4k-contents" target="_blank" rel="noopener noreferrer">Open in Mappl</a>
           </div>
         </div>
-        <div class="genre-bar" id="fourkGenres"></div>
-        <div class="content-grid" id="fourkGrid"></div>
-        <button class="load-more-btn" id="loadMore4K" style="display:none">Load More</button>
+        <p class="page-subtitle">Mappl's 4K section is embedded here so you can browse it directly without leaving the site.</p>
+        <div class="mappl-embed-shell">
+          <iframe
+            id="fourkFrame"
+            class="mappl-embed-frame"
+            src="https://mappl.tv/4k-contents"
+            title="Mappl 4K Content"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            allow="fullscreen"
+          ></iframe>
+        </div>
       </div>
     </section>
 
@@ -526,6 +523,6 @@
   </button>
 
   <script src="mcu_timeline.js"></script>
-  <script src="script.js?v=19"></script>
+  <script src="script.js?v=20"></script>
 </body>
 </html>
