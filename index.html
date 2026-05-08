@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0" />
+  <title>GedaTV — Stream Movies & TV Shows Free</title>
+  <meta name="description" content="GedaTV is a free movie and TV show streaming platform. Discover trending, popular, and top-rated content." />
+  <meta property="og:title" content="GedaTV — Stream Movies & TV Shows Free" />
+  <meta property="og:description" content="Discover trending, popular, and top-rated movies and TV shows. Stream free on GedaTV." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://image.tmdb.org/t/p/w500/placeholder.jpg" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="stylesheet" href="style.css?v=9" />
+</head>
+<body>
+  <div class="ambient-bg" aria-hidden="true">
+    <span class="orb orb-a"></span>
+    <span class="orb orb-b"></span>
+    <span class="orb orb-c"></span>
+    <span class="grid-noise"></span>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav id="navbar" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="#/home" class="logo" aria-label="GedaTV Home">
+        <span class="logo-icon">🎬</span>
+        <span class="logo-text">Geda<span class="accent">TV</span></span>
+      </a>
+      <ul class="nav-links" id="navLinks" role="menubar">
+        <li><a href="#/home" class="nav-link active" data-page="home" role="menuitem">Home</a></li>
+        <li><a href="#/movies" class="nav-link" data-page="movies" role="menuitem">Movies</a></li>
+        <li><a href="#/tv" class="nav-link" data-page="tv" role="menuitem">TV Shows</a></li>
+        <li><a href="#/kdrama" class="nav-link" data-page="kdrama" role="menuitem">K-Drama</a></li>
+        <li><a href="#/bollywood" class="nav-link" data-page="bollywood" role="menuitem">Bollywood</a></li>
+        <li><a href="#/marvel" class="nav-link" data-page="marvel" role="menuitem">Marvel</a></li>
+        <li><a href="#/watchlist" class="nav-link" data-page="watchlist" role="menuitem">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          Watchlist
+        </a></li>
+        <li><a href="#/history" class="nav-link" data-page="history" id="navHistory" style="display:none;" role="menuitem">History</a></li>
+        <li id="navAuthContainer">
+          <button class="btn-primary btn-sm" id="navLoginBtn">Sign In</button>
+        </li>
+      </ul>
+      <div class="nav-right">
+        <div class="search-box" id="searchBox">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search movies, TV shows..." autocomplete="off" aria-label="Search movies and TV shows" />
+          <div class="search-results" id="searchResults"></div>
+        </div>
+        <button class="btn-secondary btn-sm" id="navSettingsBtn" aria-label="Open settings">Settings</button>
+        <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="app">
+    <!-- Home Page View -->
+    <section id="view-home" class="view active">
+      <div id="heroBanner" class="hero-banner">
+        <div class="hero-backdrop" id="heroBackdrop"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content" id="heroContent">
+          <!-- Skeleton while loading -->
+          <div class="skeleton skeleton-title" style="width:60%;max-width:500px;height:48px;margin-bottom:16px;"></div>
+          <div class="skeleton skeleton-text" style="width:30%;height:20px;margin-bottom:12px;"></div>
+          <div class="skeleton skeleton-text" style="width:80%;max-width:500px;height:60px;margin-bottom:24px;"></div>
+        </div>
+        <div class="hero-indicators" id="heroIndicators"></div>
+      </div>
+      <div class="container">
+        <section class="content-row" id="genreFilterRow">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+              <h2>Browse by Genre</h2>
+            </div>
+          </div>
+          <div class="genre-scroll" id="homeGenres"></div>
+        </section>
+
+        <section class="content-row" id="continueWatchingRow" style="display: none;">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
+              <h2>Continue Watching</h2>
+            </div>
+          </div>
+          <div class="scroll-container" id="continueWatchingScroll"></div>
+        </section>
+
+        <section class="content-row" id="recentlyViewedRow" style="display: none;">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <h2>Recently Viewed</h2>
+            </div>
+            <a href="#/home" class="see-all" id="clearRecentBtn">Clear</a>
+          </div>
+          <div class="scroll-container" id="recentlyViewedScroll"></div>
+        </section>
+
+        <section class="content-row" id="trendingRow">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 17"/><polyline points="17 6 23 6 23 12"/></svg></span>
+              <h2>Trending Now</h2>
+            </div>
+            <a href="#/movies" class="see-all">See All →</a>
+          </div>
+          <div class="scroll-container" id="trendingScroll">
+            <!-- Skeleton cards -->
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+          </div>
+        </section>
+        <section class="content-row" id="popularRow">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+              <h2>Popular Movies</h2>
+            </div>
+            <a href="#/movies" class="see-all">See All →</a>
+          </div>
+          <div class="scroll-container" id="popularScroll">
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+          </div>
+        </section>
+        <section class="content-row" id="topRatedRow">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9c0-1 1-2 2-2h8c1 0 2 1 2 2v2H6V9z"/><rect x="2" y="11" width="20" height="11" rx="2"/><path d="M10 15h4"/></svg></span>
+              <h2>Top Rated</h2>
+            </div>
+            <a href="#/movies" class="see-all">See All →</a>
+          </div>
+          <div class="scroll-container" id="topRatedScroll">
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+          </div>
+        </section>
+        <section class="content-row" id="tvPopularRow">
+          <div class="row-header">
+            <div class="row-title-wrapper">
+              <span class="row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+              <h2>Popular TV Shows</h2>
+            </div>
+            <a href="#/tv" class="see-all">See All →</a>
+          </div>
+          <div class="scroll-container" id="tvPopularScroll">
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+            <div class="card skeleton-card"><div class="skeleton" style="width:100%;aspect-ratio:16/9;border-radius:12px;"></div></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Movies Page View -->
+    <section id="view-movies" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>🎬 Movies</h1>
+          <div class="header-controls">
+            <div class="filter-bar" id="movieFilters">
+              <button class="filter-chip active" data-filter="popular">Popular</button>
+              <button class="filter-chip" data-filter="top_rated">Top Rated</button>
+              <button class="filter-chip" data-filter="upcoming">Upcoming</button>
+              <button class="filter-chip" data-filter="now_playing">Now Playing</button>
+            </div>
+            <select class="sort-select" id="movieSort" aria-label="Sort movies">
+              <option value="">Sort by</option>
+              <option value="vote_average.desc">Rating ↓</option>
+              <option value="vote_average.asc">Rating ↑</option>
+              <option value="release_date.desc">Newest</option>
+              <option value="release_date.asc">Oldest</option>
+              <option value="popularity.desc">Most Popular</option>
+            </select>
+          </div>
+        </div>
+        <div class="genre-bar" id="movieGenres"></div>
+        <div class="content-grid" id="moviesGrid"></div>
+        <button class="load-more-btn" id="loadMoreMovies" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- TV Shows Page View -->
+    <section id="view-tv" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>📺 TV Shows</h1>
+          <div class="header-controls">
+            <div class="filter-bar" id="tvFilters">
+              <button class="filter-chip active" data-filter="popular">Popular</button>
+              <button class="filter-chip" data-filter="top_rated">Top Rated</button>
+              <button class="filter-chip" data-filter="airing_today">Airing Today</button>
+              <button class="filter-chip" data-filter="on_the_air">On The Air</button>
+            </div>
+            <select class="sort-select" id="tvSort" aria-label="Sort TV shows">
+              <option value="">Sort by</option>
+              <option value="vote_average.desc">Rating ↓</option>
+              <option value="vote_average.asc">Rating ↑</option>
+              <option value="first_air_date.desc">Newest</option>
+              <option value="first_air_date.asc">Oldest</option>
+              <option value="popularity.desc">Most Popular</option>
+            </select>
+          </div>
+        </div>
+        <div class="genre-bar" id="tvGenres"></div>
+        <div class="content-grid" id="tvGrid"></div>
+        <button class="load-more-btn" id="loadMoreTV" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- Anime Page View -->
+    <section id="view-anime" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>🗡️ Anime</h1>
+          <div class="header-controls" style="gap:12px; flex-wrap:wrap;">
+            <div class="filter-bar" id="animeFilters">
+              <button class="filter-chip active" data-filter="featured">Featured</button>
+              <button class="filter-chip" data-filter="popular">Popular</button>
+              <button class="filter-chip" data-filter="random">Random</button>
+            </div>
+            <div class="search-box" style="min-width:min(100%, 360px);">
+              <input type="text" id="animeSearchInput" placeholder="Search anime..." autocomplete="off" aria-label="Search anime" />
+              <button class="btn-primary btn-sm" id="animeSearchBtn" type="button">Search</button>
+            </div>
+          </div>
+        </div>
+        <div class="content-grid" id="animeGrid"></div>
+        <button class="load-more-btn" id="loadMoreAnime" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- K-Drama Page View -->
+    <section id="view-kdrama" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>🎭 K-Drama</h1>
+          <div class="filter-bar" id="kdramaFilters">
+            <button class="filter-chip active" data-filter="popular">Popular</button>
+            <button class="filter-chip" data-filter="top_rated">Top Rated</button>
+            <button class="filter-chip" data-filter="airing_today">Airing Today</button>
+          </div>
+        </div>
+        <div class="genre-bar" id="kdramaGenres"></div>
+        <div class="content-grid" id="kdramaGrid"></div>
+        <button class="load-more-btn" id="loadMoreKDrama" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- Bollywood Page View -->
+    <section id="view-bollywood" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>💃 Bollywood</h1>
+          <div class="filter-bar" id="bollywoodFilters">
+            <button class="filter-chip active" data-filter="popular">Popular Movies</button>
+            <button class="filter-chip" data-filter="top_rated">Top Rated Movies</button>
+            <button class="filter-chip" data-filter="upcoming">Upcoming</button>
+          </div>
+        </div>
+        <div class="genre-bar" id="bollywoodGenres"></div>
+        <div class="content-grid" id="bollywoodGrid"></div>
+        <button class="load-more-btn" id="loadMoreBollywood" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- Marvel / MCU Page View -->
+    <section id="view-marvel" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>🦸 Marvel</h1>
+          <div class="filter-bar" id="marvelTabs">
+            <button class="filter-chip active" data-tab="browse">Browse Marvel</button>
+            <button class="filter-chip" data-tab="timeline">MCU Timeline</button>
+          </div>
+        </div>
+        
+        <!-- Browse Specific Filters -->
+        <div id="marvelBrowseFilters" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button class="filter-chip active" data-filter="movie">Movies</button>
+          <button class="filter-chip" data-filter="tv">TV Shows</button>
+        </div>
+
+        <!-- Timeline Specific Filters -->
+        <div id="marvelTimelineFilters" style="display: none; gap: 8px; margin-bottom: 16px;">
+          <button class="filter-chip active" data-order="chronological">Chronological Order</button>
+          <button class="filter-chip" data-order="release">Release Order</button>
+        </div>
+
+        <div class="content-grid" id="marvelGrid"></div>
+        <button class="load-more-btn" id="loadMoreMarvel" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- Detail Page View -->
+    <section id="view-detail" class="view">
+      <div id="detailContent"></div>
+    </section>
+
+    <!-- Watch Page View -->
+    <section id="view-watch" class="view">
+      <div class="watch-container" id="watchContainer"></div>
+    </section>
+
+    <!-- Watchlist Page View -->
+    <section id="view-watchlist" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>🔖 My Watchlist</h1>
+        </div>
+        <div class="content-grid" id="watchlistGrid"></div>
+        <div class="empty-state" id="emptyWatchlist" style="display:none">
+          <div class="empty-icon">📭</div>
+          <h3 id="emptyWLTitle">Your watchlist is empty</h3>
+          <p id="emptyWLDesc">Start adding movies and TV shows to keep track of what you want to watch.</p>
+          <a href="#/home" class="btn-primary" id="emptyWLBtn">Browse Content</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Page View -->
+    <section id="view-history" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1>⏱️ Watch History</h1>
+        </div>
+        <div class="content-grid" id="historyGrid"></div>
+        <div class="empty-state" id="emptyHistory" style="display:none">
+          <div class="empty-icon">📭</div>
+          <h3>Your history is empty</h3>
+          <p>You haven't watched any movies or shows yet.</p>
+          <a href="#/home" class="btn-primary">Browse Content</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search Results View -->
+    <section id="view-search" class="view">
+      <div class="container page-top">
+        <div class="page-header">
+          <h1 id="searchTitle">Search Results</h1>
+        </div>
+        <div class="content-grid" id="searchGrid"></div>
+        <button class="load-more-btn" id="loadMoreSearch" style="display:none">Load More</button>
+      </div>
+    </section>
+
+    <!-- 404 Page View -->
+    <section id="view-404" class="view">
+      <div class="container page-top" style="text-align:center; padding-top:180px;">
+        <div class="four-oh-four">
+          <h1 class="four-oh-four-title">404</h1>
+          <p class="four-oh-four-sub">Lost in the multiverse</p>
+          <p style="color:var(--text-secondary);margin-bottom:32px;max-width:400px;margin-left:auto;margin-right:auto;">The page you're looking for doesn't exist or has been moved to another timeline.</p>
+          <a href="#/home" class="btn-primary">← Back to Home</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo-text">🎬 Geda<span class="accent">TV</span></span>
+          <p>Free movies and TV shows streaming platform.<br/>Powered by TMDB API.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Browse</h4>
+          <a href="#/home">Home</a>
+          <a href="#/movies">Movies</a>
+          <a href="#/tv">TV Shows</a>
+          <a href="#/history">History</a>
+        </div>
+        <div class="footer-col">
+          <h4>More</h4>
+          <a href="#/kdrama">K-Drama</a>
+          <a href="#/bollywood">Bollywood</a>
+          <a href="#/marvel">Marvel</a>
+          <a href="#/watchlist">Watchlist</a>
+        </div>
+        <div class="footer-col">
+          <h4>Tips</h4>
+          <p class="footer-tip">Press <strong>/</strong> to focus search instantly.</p>
+          <p class="footer-tip">Use <strong>Esc</strong> to close search results.</p>
+          <p class="footer-tip">Use Random Pick in the hero for quick discovery.</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 GedaTV. Built with ❤️ — Data from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- LOADING SPINNER -->
+  <div class="loader-overlay" id="loader">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div id="authModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Authentication">
+    <div class="modal">
+      <button class="modal-close" onclick="closeAuthModal()" aria-label="Close authentication modal">✕</button>
+      <h2 id="authTitle" style="margin-bottom:16px;font-size:24px;">Sign In</h2>
+      <p id="authError" class="auth-error" style="display:none;"></p>
+      <form id="authForm" onsubmit="handleAuth(event)">
+        <input type="text" id="authUsername" class="auth-input" placeholder="Username" required aria-label="Username" />
+        <input type="password" id="authPassword" class="auth-input" placeholder="Password" required aria-label="Password" />
+        <button type="submit" class="btn-primary" style="width:100%; justify-content:center;">Submit</button>
+      </form>
+      <p style="margin-top:16px;text-align:center;font-size:13px;color:var(--text-secondary)">
+        <span id="authSwitchText">Don't have an account?</span> 
+        <button class="link-btn" onclick="toggleAuthMode()" id="authSwitchBtn">Register</button>
+      </p>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="User settings">
+    <div class="modal modal-lg settings-modal">
+      <button class="modal-close" onclick="closeSettingsModal()" aria-label="Close settings modal">✕</button>
+      <h2 style="margin-bottom:8px;font-size:26px;">Settings</h2>
+      <p style="margin-bottom:20px;color:var(--text-secondary);font-size:13px;">Customize your account and playback preferences.</p>
+
+      <div class="settings-grid">
+        <label class="settings-item">
+          <span class="settings-label">Theme</span>
+          <select id="settingsTheme" class="sort-select">
+            <option value="cinematic">Cinematic (Default)</option>
+            <option value="midnight">Midnight Blue</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+
+        <label class="settings-item">
+          <span class="settings-label">Preferred Player Source</span>
+          <select id="settingsSource" class="sort-select">
+            <option value="vidking">VidKing</option>
+            <option value="videasy">Videasy</option>
+            <option value="cinezo">Cinezo</option>
+            <option value="vidplus">VidPlus</option>
+            <option value="111movies">111Movies</option>
+          </select>
+        </label>
+
+        <label class="settings-item settings-toggle">
+          <span>
+            <span class="settings-label">Autoplay Next Episode</span>
+            <span class="settings-note">Used by providers that support next-episode autoplay.</span>
+          </span>
+          <input type="checkbox" id="settingsAutoplayNext" />
+        </label>
+
+        <label class="settings-item settings-toggle">
+          <span>
+            <span class="settings-label">Auto Open Servers Panel</span>
+            <span class="settings-note">Automatically open the sidebar panel when watch page loads.</span>
+          </span>
+          <input type="checkbox" id="settingsAutoOpenServers" />
+        </label>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+        <button class="btn-primary" id="settingsSaveBtn">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- BACK TO TOP -->
+  <button id="backToTop" class="back-to-top" aria-label="Scroll to top">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
+
+  <script src="mcu_timeline.js"></script>
+  <script src="script.js?v=15"></script>
+</body>
+</html>
