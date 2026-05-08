@@ -2096,7 +2096,7 @@ async function load4K(append = false) {
   if (state['4kLoading']) return;
   state['4kLoading'] = true;
   if (!append) showView('4k');
-  if (!append) showGridSkeleton($('#4kGrid'));
+  if (!append) showGridSkeleton($('#fourkGrid'));
   
   const params = { page: state['4kPage'], with_keywords: '263586' }; // 4K keyword
   if (state['4kGenre']) params.with_genres = state['4kGenre'];
@@ -2115,17 +2115,17 @@ async function load4K(append = false) {
     const data = await tmdb(endpoint, params);
     if (!data.results || data.results.length === 0) {
       state['4kHasMore'] = false;
-      showEmptyState($('#4kGrid'), 'No 4K content found', '📺');
+      showEmptyState($('#fourkGrid'), 'No 4K content found', '📺');
       $('#loadMore4K').style.display = 'none';
     } else {
-      renderCards($('#4kGrid'), data.results, type, append);
+      renderCards($('#fourkGrid'), data.results, type, append);
       state['4kHasMore'] = state['4kPage'] < data.total_pages;
       $('#loadMore4K').style.display = 'none';
     }
   } catch (e) {
     state['4kHasMore'] = false;
     console.error('4K load failed:', e);
-    showErrorState($('#4kGrid'), 'Failed to load 4K content');
+    showErrorState($('#fourkGrid'), 'Failed to load 4K content');
     $('#loadMore4K').style.display = 'none';
   } finally {
     state['4kLoading'] = false;
@@ -2135,7 +2135,7 @@ async function load4K(append = false) {
     const g = await tmdb('/genre/movie/list');
     state.movieGenres = g.genres;
   }
-  renderGenreBar($('#4kGenres'), state.movieGenres, state['4kGenre'], '4k');
+  renderGenreBar($('#fourkGenres'), state.movieGenres, state['4kGenre'], '4k');
 }
 
 /* ---------- Marvel Page ---------- */
@@ -3163,9 +3163,9 @@ function setupEvents() {
   });
 
    // 4K Filters
-   $('#4kFilters')?.addEventListener('click', (e) => {
-     if (!e.target.classList.contains('filter-chip')) return;
-     $$('#4kFilters .filter-chip').forEach(b => b.classList.remove('active'));
+  $('#fourkFilters')?.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('filter-chip')) return;
+    $$('#fourkFilters .filter-chip').forEach(b => b.classList.remove('active'));
      e.target.classList.add('active');
      state['4kFilter'] = e.target.dataset.filter;
      state['4kPage'] = 1;
@@ -3174,7 +3174,7 @@ function setupEvents() {
    });
  
    // 4K Sort
-   $('#4kSort')?.addEventListener('change', (e) => {
+  $('#fourkSort')?.addEventListener('change', (e) => {
      if (e.target.value) {
        state['4kPage'] = 1;
        load4K();
