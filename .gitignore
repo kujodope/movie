@@ -1,0 +1,7 @@
+node_modules/
+.env
+database.sqlite
+*.zip
+script_backup.js
+mcu_check.js
+mcu_fetch.js
