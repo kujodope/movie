@@ -1359,10 +1359,16 @@ body.watch-mode {
   background: #000;
   z-index: 1;
 }
+#watchPlayerMount {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+}
 .watch-floating-controls {
   position: absolute;
-  top: 24px;
-  left: 24px;
+  right: 24px;
+  bottom: 24px;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -2288,8 +2294,8 @@ body {
 
   .watch-floating-controls {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    right: 12px;
+    bottom: 12px;
     gap: 8px;
     flex-direction: row;
   }
@@ -2413,8 +2419,8 @@ body {
 
 @media (max-width: 600px) {
   .watch-floating-controls {
-    top: 10px;
-    left: 10px;
+    right: 10px;
+    bottom: 10px;
     gap: 6px;
   }
 
@@ -2605,10 +2611,10 @@ body {
 
 @media (max-width: 480px) {
   .watch-floating-controls {
-    flex-direction: column;
+    flex-direction: row;
     gap: 4px;
-    top: 8px;
-    left: 8px;
+    right: 8px;
+    bottom: 8px;
   }
 
   .watch-floating-controls button {
@@ -2950,9 +2956,47 @@ body {
   }
 
   .watch-floating-controls {
-    top: 10px;
-    left: 10px;
+    right: 10px;
+    bottom: 10px;
     gap: 8px;
+  }
+
+  /* Toggle-style floating controls: a single toggle button that expands to show actions */
+  .watch-floating-controls {
+    display: flex;
+    align-items: center;
+  }
+
+  .watch-floating-controls .controls-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+  }
+
+  .watch-floating-controls .controls-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Collapsed default: hide the action buttons when data-expanded is false */
+  .watch-floating-controls[data-expanded="false"] .controls-actions {
+    display: none;
+  }
+
+  .watch-floating-controls .toggle-icon {
+    transition: transform 0.18s ease;
+    display: inline-block;
+  }
+
+  .watch-floating-controls[data-expanded="true"] .toggle-icon {
+    transform: rotate(180deg);
   }
 
   .watch-floating-controls .btn-secondary {
@@ -3032,6 +3076,7 @@ body {
   .watch-floating-controls {
     flex-direction: row;
     flex-wrap: wrap;
+    justify-content: flex-end;
     max-width: calc(100vw - 20px);
   }
 

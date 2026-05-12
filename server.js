@@ -393,7 +393,7 @@ app.get('/api/settings', authenticateToken, (req, res) => {
 
 app.patch('/api/settings', authenticateToken, (req, res) => {
   const allowedThemes = new Set(['cinematic', 'midnight', 'light']);
-  const allowedSources = new Set(['vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
+  const allowedSources = new Set(['mappl', 'embedmaster', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
 
   const inputTheme = req.body.theme;
   const inputPreferredSource = req.body.preferred_source;

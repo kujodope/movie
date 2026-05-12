@@ -21,6 +21,10 @@ const CONFIG = {
     MOVIE: (id) => `https://api.cinezo.net/movie/${id}?autoplay=false`,
     TV: (id, s, e) => `https://api.cinezo.net/tv/${id}/${s}/${e}?autoplay=false`
   },
+  EMBED_EMBEDMASTER: {
+    MOVIE: (id) => `https://embedmaster.link/movie/${id}`,
+    TV: (id, s, e) => `https://embedmaster.link/tv/${id}/${s}/${e}`
+  },
   VIDKING_TV_PARAMS: 'autoPlay=true&nextEpisode=true&episodeSelector=true&color=8B5CF6',
   VIDKING_MOVIE_PARAMS: 'autoPlay=true&color=8B5CF6',
   EMBED_VIDKING: {
@@ -732,7 +736,7 @@ const DEFAULT_SETTINGS = {
 
 function normalizeSettings(input = {}) {
   const allowedThemes = new Set(['cinematic', 'midnight', 'light']);
-  const allowedSources = new Set(['mappl', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
+  const allowedSources = new Set(['mappl', 'embedmaster', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
   return {
     theme: allowedThemes.has(input.theme) ? input.theme : DEFAULT_SETTINGS.theme,
     preferred_source: allowedSources.has(input.preferred_source) ? input.preferred_source : DEFAULT_SETTINGS.preferred_source,
@@ -771,6 +775,8 @@ function persistSettingsToStorage() {
 
 function getEmbedUrlForSource(source, type, id, season = 1, episode = 1) {
   switch (source) {
+    case 'embedmaster':
+      return type === 'tv' ? CONFIG.EMBED_EMBEDMASTER.TV(id, season, episode) : CONFIG.EMBED_EMBEDMASTER.MOVIE(id);
     case 'vidking':
       return type === 'tv' ? CONFIG.EMBED_VIDKING.TV(id, season, episode) : CONFIG.EMBED_VIDKING.MOVIE(id);
     case 'videasy':
@@ -794,6 +800,19 @@ function getEmbedSandboxForSource(source) {
     return 'allow-scripts allow-same-origin allow-presentation';
   }
   return '';
+}
+
+function escapeAttr(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function buildWatchPlayerHtml({ url, sandbox = '' }) {
+  const safeUrl = escapeAttr(url || 'about:blank');
+  return `<iframe class="watch-player" id="watchPlayer" src="${safeUrl}" ${sandbox ? `sandbox="${sandbox}"` : ''} allowfullscreen allow="autoplay; encrypted-media; fullscreen" referrerpolicy="origin"></iframe>`;
 }
 
 async function fetchUserSettings() {
@@ -885,6 +904,23 @@ function toggleAuthMode() {
   $('#authSwitchText').textContent = window.isLoginMode ? "Don't have an account?" : "Already have an account?";
   $('#authSwitchBtn').textContent = window.isLoginMode ? 'Register' : 'Sign In';
 }
+
+// Toggle the floating watch controls (show/hide Back and Server buttons)
+window.toggleWatchControls = function(btn) {
+  try {
+    const wrapper = btn.closest('.watch-floating-controls');
+    if (!wrapper) return;
+    const expanded = wrapper.getAttribute('data-expanded') === 'true';
+    wrapper.setAttribute('data-expanded', String(!expanded));
+    btn.setAttribute('aria-expanded', String(!expanded));
+    const icon = btn.querySelector('.toggle-icon');
+    if (icon) icon.textContent = !expanded ? '‹' : '›';
+    // Update title for clarity
+    btn.title = !expanded ? 'Hide controls' : 'Show controls';
+  } catch (e) {
+    console.error('toggleWatchControls error', e);
+  }
+};
 
 async function handleAuth(e) {
   e.preventDefault();
@@ -1926,9 +1962,12 @@ async function loadAnimeWatch(id, episodeNum = 1) {
     watchContainer.innerHTML = `
       <div class="watch-layout">
         <div class="watch-main">
-          <div class="watch-floating-controls">
-            <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
-            <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar')?.classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ Servers & Episodes</button>
+          <div class="watch-floating-controls" data-expanded="false">
+            <button class="controls-toggle btn-secondary" aria-expanded="false" onclick="toggleWatchControls(this)" title="Show controls" style="border-radius:999px; padding: 10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)"><span class="toggle-icon">›</span></button>
+            <div class="controls-actions">
+              <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
+              <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar')?.classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ Servers & Episodes</button>
+            </div>
           </div>
           <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh; background:#000;">
             <video id="animeVideoPlayer" class="watch-player" controls playsinline crossorigin="anonymous"></video>
@@ -2527,6 +2566,7 @@ async function loadWatch(type, id, season = 1, episode = 1) {
       </div>
       <div class="server-grid">
         <button class="server-btn server-option ${selectedSource === 'mappl' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'mappl', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Mappl.tv</button>
+        <button class="server-btn server-option ${selectedSource === 'embedmaster' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'embedmaster', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">EmbedMaster</button>
         <button class="server-btn server-option ${selectedSource === 'vidking' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidking', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidKing</button>
         <button class="server-btn server-option ${selectedSource === 'videasy' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'videasy', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Videasy</button>
         <button class="server-btn server-option ${selectedSource === 'vidplus' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidplus', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidPlus</button>
@@ -2556,16 +2596,19 @@ async function loadWatch(type, id, season = 1, episode = 1) {
   $('#watchContainer').innerHTML = `
     <div class="watch-layout">
       <div class="watch-main">
-        <div class="watch-floating-controls">
-          <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
-          <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar').classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ ${mediaType === 'tv' ? 'Servers & Episodes' : 'Servers'}</button>
-        </div>
+        <div class="watch-floating-controls" data-expanded="false">
+            <button class="controls-toggle btn-secondary" aria-expanded="false" onclick="toggleWatchControls(this)" title="Show controls" style="border-radius:999px; padding: 10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)"><span class="toggle-icon">›</span></button>
+            <div class="controls-actions">
+              <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
+              <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar').classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ ${mediaType === 'tv' ? 'Servers & Episodes' : 'Servers'}</button>
+            </div>
+          </div>
         <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh;">
           ${savedPos > 0 ? `<div id="resumeToast" style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); color:white; padding:12px 20px; border-radius:8px; z-index:100; font-size:13px; border-left:4px solid var(--accent); display:flex; align-items:center; gap:12px; animation: slideIn 0.3s ease-out;">
             <span>Resuming from ${Math.floor(savedPos/60)}m ${savedPos%60}s</span>
             <button onclick="this.parentElement.remove()" style="color:var(--text-secondary); font-size:16px;">&times;</button>
           </div>` : ''}
-          <iframe class="watch-player" id="watchPlayer" src="${embedUrl}" ${embedSandbox ? `sandbox="${embedSandbox}"` : ''} allowfullscreen allow="autoplay; encrypted-media; fullscreen" referrerpolicy="origin"></iframe>
+          <div id="watchPlayerMount">${buildWatchPlayerHtml({ url: embedUrl, sandbox: embedSandbox })}</div>
         </div>
       </div>
       <div class="watch-sidebar">
@@ -2637,20 +2680,15 @@ window.switchServer = function(btn, id, type, server, season, episode, imdbId = 
   if (btn) btn.classList.add('active');
 
   saveUserSettings({ preferred_source: server }, true);
+  const mount = $('#watchPlayerMount');
+  if (!mount) return;
   const url = getEmbedUrlForSource(server, type, id, season, episode);
   const sandbox = getEmbedSandboxForSource(server);
-
-  const player = $('#watchPlayer');
-  if (!player) return;
-
-  if (sandbox) player.setAttribute('sandbox', sandbox);
-  else player.removeAttribute('sandbox');
+  mount.innerHTML = buildWatchPlayerHtml({ url, sandbox });
 
   if (type === 'tv') {
     markTvEpisodeSelection(id, season, episode);
   }
-
-  player.src = url;
 };
 
 /* ---------- Watchlist Page ---------- */
