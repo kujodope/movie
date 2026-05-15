@@ -18,8 +18,8 @@ const CONFIG = {
     TV: (id, s, e) => `https://111movies.net/tv/${id}/${s}/${e}`
   },
   EMBED_CINEZO: {
-    MOVIE: (id) => `https://api.cinezo.net/movie/${id}?autoplay=false`,
-    TV: (id, s, e) => `https://api.cinezo.net/tv/${id}/${s}/${e}?autoplay=false`
+    MOVIE: (id) => `https://player.cinezo.live/embed/movie/${id}?autoplay=true&poster=true&chromecast=true&servericon=true&setting=true&pip=true&download=true&font=Roboto&fontcolor=6f63ff&fontsize=20&opacity=0.5&primarycolor=e8b86d&secondarycolor=0a0a12&iconcolor=ffffff`,
+    TV: (id, s, e) => `https://player.cinezo.live/embed/tv/${id}/${s}/${e}?autoplay=true&poster=true&chromecast=true&servericon=true&setting=true&pip=true&download=true&font=Roboto&fontcolor=6f63ff&fontsize=20&opacity=0.5&primarycolor=e8b86d&secondarycolor=0a0a12&iconcolor=ffffff`
   },
   EMBED_EMBEDMASTER: {
     MOVIE: (id) => `https://embedmaster.link/movie/${id}`,
@@ -812,7 +812,9 @@ function escapeAttr(value = '') {
 
 function buildWatchPlayerHtml({ url, sandbox = '' }) {
   const safeUrl = escapeAttr(url || 'about:blank');
-  return `<iframe class="watch-player" id="watchPlayer" src="${safeUrl}" ${sandbox ? `sandbox="${sandbox}"` : ''} allowfullscreen allow="autoplay; encrypted-media; fullscreen" referrerpolicy="origin"></iframe>`;
+  // Add broad allow attributes and vendor fullscreen flags to maximize provider compatibility
+  const allowList = 'accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; geolocation';
+  return `<iframe class="watch-player" id="watchPlayer" src="${safeUrl}" ${sandbox ? `sandbox="${sandbox}"` : ''} allow="${allowList}" allowfullscreen webkitallowfullscreen mozallowfullscreen referrerpolicy="origin"></iframe>`;
 }
 
 async function fetchUserSettings() {
@@ -919,6 +921,35 @@ window.toggleWatchControls = function(btn) {
     btn.title = !expanded ? 'Hide controls' : 'Show controls';
   } catch (e) {
     console.error('toggleWatchControls error', e);
+  }
+};
+
+// Toggle controls from the left-middle handle (moves/animates the floating controls)
+window.toggleLeftControls = function(btn) {
+  try {
+    const wrapper = document.querySelector('.watch-floating-controls');
+    if (!wrapper) return;
+    const isVisible = wrapper.classList.toggle('visible');
+    btn.setAttribute('aria-expanded', String(isVisible));
+    btn.title = isVisible ? 'Hide controls' : 'Show controls';
+  } catch (e) {
+    console.error('toggleLeftControls error', e);
+  }
+};
+
+// Helper: force the watch iframe into fullscreen from parent (works around some embed issues)
+window.enterWatchFullscreen = function() {
+  try {
+    const iframe = document.getElementById('watchPlayer');
+    if (!iframe) return showToast && showToast('Player not found', 'error');
+    if (iframe.requestFullscreen) return iframe.requestFullscreen();
+    if (iframe.webkitRequestFullscreen) return iframe.webkitRequestFullscreen();
+    if (iframe.mozRequestFullScreen) return iframe.mozRequestFullScreen();
+    if (iframe.msRequestFullscreen) return iframe.msRequestFullscreen();
+    showToast && showToast('Fullscreen not supported', 'error');
+  } catch (e) {
+    console.error('enterWatchFullscreen error', e);
+    showToast && showToast('Fullscreen failed: ' + (e.message || e), 'error');
   }
 };
 
@@ -1962,8 +1993,12 @@ async function loadAnimeWatch(id, episodeNum = 1) {
     watchContainer.innerHTML = `
       <div class="watch-layout">
         <div class="watch-main">
+          <button class="watch-left-handle" aria-expanded="false" onclick="toggleLeftControls(this)" title="Show controls" style="border-radius:999px; padding:10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px); position:absolute; left:18px; top:50%; transform:translateY(-50%); z-index:110;">
+            <span class="left-icon">≡</span>
+          </button>
           <div class="watch-floating-controls" data-expanded="true">
             <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
+            <button class="btn-secondary" onclick="enterWatchFullscreen()" title="Fullscreen" style="border-radius:999px; padding: 10px 12px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">⤢</button>
             <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar')?.classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ Servers & Episodes</button>
           </div>
           <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh; background:#000;">
@@ -2593,13 +2628,14 @@ async function loadWatch(type, id, season = 1, episode = 1) {
   $('#watchContainer').innerHTML = `
     <div class="watch-layout">
       <div class="watch-main">
-        <div class="watch-floating-controls" data-expanded="false">
-            <button class="controls-toggle btn-secondary" aria-expanded="false" onclick="toggleWatchControls(this)" title="Show controls" style="border-radius:999px; padding: 10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)"><span class="toggle-icon">›</span></button>
-            <div class="controls-actions">
-              <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
-              <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar').classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ ${mediaType === 'tv' ? 'Servers & Episodes' : 'Servers'}</button>
-            </div>
-          </div>
+        <button class="watch-left-handle" aria-expanded="false" onclick="toggleLeftControls(this)" title="Show controls" style="border-radius:999px; padding:10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px); position:absolute; left:18px; top:50%; transform:translateY(-50%); z-index:110;">
+          <span class="left-icon">≡</span>
+        </button>
+        <div class="watch-floating-controls" data-expanded="true">
+          <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
+          <button class="btn-secondary" onclick="enterWatchFullscreen()" title="Fullscreen" style="border-radius:999px; padding: 10px 12px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">⤢</button>
+          <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar').classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ ${mediaType === 'tv' ? 'Servers & Episodes' : 'Servers'}</button>
+        </div>
         <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh;">
           ${savedPos > 0 ? `<div id="resumeToast" style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); color:white; padding:12px 20px; border-radius:8px; z-index:100; font-size:13px; border-left:4px solid var(--accent); display:flex; align-items:center; gap:12px; animation: slideIn 0.3s ease-out;">
             <span>Resuming from ${Math.floor(savedPos/60)}m ${savedPos%60}s</span>

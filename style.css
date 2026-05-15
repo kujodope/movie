@@ -1373,6 +1373,95 @@ body.watch-mode {
   display: flex;
   align-items: center;
   gap: 16px;
+  /* hidden by default: invisible and non-interactive */
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2,0.9,0.2,1), left 0.28s ease, right 0.28s ease;
+}
+
+/* Left-middle handle and pop animation for watch controls */
+.watch-left-handle {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 110;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.6);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.watch-left-handle:active { transform: translateY(-50%) scale(0.96); }
+
+.watch-floating-controls {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  left: auto;
+  top: auto;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: left 0.28s cubic-bezier(0.2,0.9,0.2,1), right 0.28s cubic-bezier(0.2,0.9,0.2,1), top 0.28s cubic-bezier(0.2,0.9,0.2,1), bottom 0.28s cubic-bezier(0.2,0.9,0.2,1), transform 0.18s ease, opacity 0.18s ease;
+  transform-origin: center;
+}
+
+/* When left-handle toggles, move controls to left-middle and pop */
+body.watch-controls-left-open .watch-floating-controls {
+  left: 18px;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%) scale(1.05);
+  opacity: 1;
+}
+
+/* Enforce left-middle hidden-by-default state across breakpoints (override other rules) */
+body .watch-floating-controls {
+  left: 18px !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) scale(0.96) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body.watch-controls-left-open .watch-floating-controls {
+  opacity: 1 !important;
+  transform: translateY(-50%) scale(1.05) !important;
+  pointer-events: auto !important;
+}
+
+/* Show controls when toggled visible (no repositioning) */
+.watch-floating-controls.visible {
+  opacity: 1 !important;
+  transform: translateY(-50%) scale(1.05) !important;
+  pointer-events: auto !important;
+}
+
+body.watch-controls-left-open .watch-left-handle {
+  transform: translateY(-50%) scale(0.96);
+  background: rgba(255,255,255,0.04);
+}
+
+/* subtle pop animation for action buttons */
+.watch-floating-controls .btn-secondary {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+body.watch-controls-left-open .watch-floating-controls .btn-secondary {
+  transform: translateY(0) scale(1);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
 }
 .watch-sidebar {
   position: absolute;
