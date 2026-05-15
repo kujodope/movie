@@ -2985,18 +2985,14 @@ body {
     align-items: center;
   }
 
-  /* Collapsed default: hide the action buttons when data-expanded is false */
-  .watch-floating-controls[data-expanded="false"] .controls-actions {
-    display: none;
+  /* All action buttons are always visible */
+  .watch-floating-controls .controls-actions {
+    display: flex;
   }
 
   .watch-floating-controls .toggle-icon {
     transition: transform 0.18s ease;
-    display: inline-block;
-  }
-
-  .watch-floating-controls[data-expanded="true"] .toggle-icon {
-    transform: rotate(180deg);
+    display: none;
   }
 
   .watch-floating-controls .btn-secondary {

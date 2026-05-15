@@ -1962,12 +1962,9 @@ async function loadAnimeWatch(id, episodeNum = 1) {
     watchContainer.innerHTML = `
       <div class="watch-layout">
         <div class="watch-main">
-          <div class="watch-floating-controls" data-expanded="false">
-            <button class="controls-toggle btn-secondary" aria-expanded="false" onclick="toggleWatchControls(this)" title="Show controls" style="border-radius:999px; padding: 10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)"><span class="toggle-icon">›</span></button>
-            <div class="controls-actions">
-              <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
-              <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar')?.classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ Servers & Episodes</button>
-            </div>
+          <div class="watch-floating-controls" data-expanded="true">
+            <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
+            <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar')?.classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ Servers & Episodes</button>
           </div>
           <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh; background:#000;">
             <video id="animeVideoPlayer" class="watch-player" controls playsinline crossorigin="anonymous"></video>
