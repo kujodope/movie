@@ -299,6 +299,12 @@ db.serialize(() => {
   db.run('CREATE INDEX IF NOT EXISTS idx_history_user_watched_at ON history(user_id, watched_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_progress_user_updated_at ON progress(user_id, updated_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_progress_user_media_type ON progress(user_id, media_id, type)');
+
+  // Force preferred_source to meowtv for existing installs (migration)
+  db.run("UPDATE user_settings SET preferred_source = 'meowtv' WHERE preferred_source IS NOT NULL AND preferred_source != 'meowtv'", (err) => {
+    if (err) console.error('Failed to migrate preferred_source to meowtv:', err);
+    else console.log('Migrated existing user_settings.preferred_source to meowtv');
+  });
 });
 
 // Auth Middleware
@@ -367,9 +373,10 @@ app.get('/api/settings', authenticateToken, (req, res) => {
     if (err) return res.status(500).json({ error: 'Database error' });
 
     if (row) {
+      // Enforce MeowTV as the preferred source for all users
       return res.json({
         theme: row.theme,
-        preferred_source: row.preferred_source,
+        preferred_source: 'meowtv',
         autoplay_next: !!row.autoplay_next,
         auto_open_servers: !!row.auto_open_servers,
       });
@@ -382,7 +389,7 @@ app.get('/api/settings', authenticateToken, (req, res) => {
         if (insertErr) return res.status(500).json({ error: 'Database error' });
         res.json({
           theme: defaults.theme,
-          preferred_source: defaults.preferred_source,
+          preferred_source: 'meowtv',
           autoplay_next: !!defaults.autoplay_next,
           auto_open_servers: !!defaults.auto_open_servers,
         });
@@ -401,7 +408,8 @@ app.patch('/api/settings', authenticateToken, (req, res) => {
   const inputAutoOpenServers = req.body.auto_open_servers;
 
   const theme = allowedThemes.has(inputTheme) ? inputTheme : 'cinematic';
-  const preferredSource = allowedSources.has(inputPreferredSource) ? inputPreferredSource : 'meowtv';
+  // Force preferred source to meowtv regardless of client input
+  const preferredSource = 'meowtv';
   const autoplayNext = inputAutoplayNext ? 1 : 0;
   const autoOpenServers = inputAutoOpenServers ? 1 : 0;
 
