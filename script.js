@@ -286,7 +286,7 @@ const state = {
   },
   settings: {
     theme: 'cinematic',
-    preferred_source: 'vidking',
+    preferred_source: 'meowtv',
     autoplay_next: true,
     auto_open_servers: false,
   },
@@ -737,7 +737,7 @@ const DEFAULT_SETTINGS = {
 
 function normalizeSettings(input = {}) {
   const allowedThemes = new Set(['cinematic', 'midnight', 'light']);
-  const allowedSources = new Set(['mappl', 'meowtv', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
+  const allowedSources = new Set(['meowtv']);
   return {
     theme: allowedThemes.has(input.theme) ? input.theme : DEFAULT_SETTINGS.theme,
     preferred_source: allowedSources.has(input.preferred_source) ? input.preferred_source : DEFAULT_SETTINGS.preferred_source,
@@ -855,11 +855,22 @@ function closeAuthModal() {
 }
 
 function openSettingsModal() {
-  $('#settingsTheme').value = state.settings.theme;
-  $('#settingsSource').value = state.settings.preferred_source;
-  $('#settingsAutoplayNext').checked = !!state.settings.autoplay_next;
-  $('#settingsAutoOpenServers').checked = !!state.settings.auto_open_servers;
-  $('#settingsModal').classList.remove('hidden');
+  const settingsTheme = $('#settingsTheme');
+  const settingsSource = $('#settingsSource');
+  const settingsAutoplayNext = $('#settingsAutoplayNext');
+  const settingsAutoOpenServers = $('#settingsAutoOpenServers');
+  const settingsModal = $('#settingsModal');
+
+  if (!settingsTheme || !settingsSource || !settingsAutoplayNext || !settingsAutoOpenServers || !settingsModal) {
+    return;
+  }
+
+  settingsTheme.value = state.settings.theme;
+  settingsSource.value = 'meowtv';
+  settingsSource.disabled = true;
+  settingsAutoplayNext.checked = !!state.settings.autoplay_next;
+  settingsAutoOpenServers.checked = !!state.settings.auto_open_servers;
+  settingsModal.classList.remove('hidden');
 }
 
 function closeSettingsModal() {
@@ -869,7 +880,7 @@ function closeSettingsModal() {
 async function handleSettingsSave() {
   const next = {
     theme: $('#settingsTheme').value,
-    preferred_source: $('#settingsSource').value,
+    preferred_source: 'meowtv',
     autoplay_next: $('#settingsAutoplayNext').checked,
     auto_open_servers: $('#settingsAutoOpenServers').checked,
   };
@@ -2489,7 +2500,7 @@ async function loadWatch(type, id, season = 1, episode = 1) {
     }
   }
 
-  const selectedSource = state.settings.preferred_source || 'videasy';
+  const selectedSource = 'meowtv';
   const embedUrl = getEmbedUrlForSource(selectedSource, mediaType, id, activeSeason || 1, activeEpisode || 1);
   const embedSandbox = getEmbedSandboxForSource(selectedSource);
 
@@ -2530,16 +2541,10 @@ async function loadWatch(type, id, season = 1, episode = 1) {
     <section class="watch-panel-section">
       <div class="watch-panel-head">
         <h3 class="watch-panel-title">Servers</h3>
-        <span class="watch-panel-sub">select provider</span>
+        <span class="watch-panel-sub">MeowTV is enforced for all users</span>
       </div>
       <div class="server-grid">
         <button class="server-btn server-option ${selectedSource === 'meowtv' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'meowtv', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">MeowTV</button>
-        <button class="server-btn server-option ${selectedSource === 'mappl' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'mappl', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Mappl.tv</button>
-        <button class="server-btn server-option ${selectedSource === 'vidking' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidking', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidKing</button>
-        <button class="server-btn server-option ${selectedSource === 'videasy' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'videasy', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Videasy</button>
-        <button class="server-btn server-option ${selectedSource === 'vidplus' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidplus', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidPlus</button>
-        <button class="server-btn server-option ${selectedSource === '111movies' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', '111movies', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">111Movies</button>
-        <button class="server-btn server-option ${selectedSource === 'cinezo' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'cinezo', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Cinezo</button>
       </div>
     </section>
   `;
@@ -2641,12 +2646,22 @@ window.changeSeason = function(id, season) {
 };
 
 window.switchServer = function(btn, id, type, server, season, episode, imdbId = '') {
+  if (server !== 'meowtv') {
+    const activeBtn = $$('.server-option').find((b) => b.textContent.trim() === 'MeowTV');
+    if (activeBtn) {
+      $$('.server-option').forEach(b => b.classList.remove('active'));
+      activeBtn.classList.add('active');
+    }
+    saveUserSettings({ preferred_source: 'meowtv' }, true);
+    return;
+  }
+
   $$('.server-option').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 
-  saveUserSettings({ preferred_source: server }, true);
-  const url = getEmbedUrlForSource(server, type, id, season, episode);
-  const sandbox = getEmbedSandboxForSource(server);
+  saveUserSettings({ preferred_source: 'meowtv' }, true);
+  const url = getEmbedUrlForSource('meowtv', type, id, season, episode);
+  const sandbox = getEmbedSandboxForSource('meowtv');
 
   const player = $('#watchPlayer');
   if (!player) return;
