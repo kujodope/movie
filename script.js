@@ -18,12 +18,8 @@ const CONFIG = {
     TV: (id, s, e) => `https://111movies.net/tv/${id}/${s}/${e}`
   },
   EMBED_CINEZO: {
-    MOVIE: (id) => `https://player.cinezo.live/embed/movie/${id}?autoplay=true&poster=true&chromecast=true&servericon=true&setting=true&pip=true&download=true&font=Roboto&fontcolor=6f63ff&fontsize=20&opacity=0.5&primarycolor=e8b86d&secondarycolor=0a0a12&iconcolor=ffffff`,
-    TV: (id, s, e) => `https://player.cinezo.live/embed/tv/${id}/${s}/${e}?autoplay=true&poster=true&chromecast=true&servericon=true&setting=true&pip=true&download=true&font=Roboto&fontcolor=6f63ff&fontsize=20&opacity=0.5&primarycolor=e8b86d&secondarycolor=0a0a12&iconcolor=ffffff`
-  },
-  EMBED_EMBEDMASTER: {
-    MOVIE: (id) => `https://embedmaster.link/movie/${id}`,
-    TV: (id, s, e) => `https://embedmaster.link/tv/${id}/${s}/${e}`
+    MOVIE: (id) => `https://api.cinezo.net/movie/${id}?autoplay=false`,
+    TV: (id, s, e) => `https://api.cinezo.net/tv/${id}/${s}/${e}?autoplay=false`
   },
   VIDKING_TV_PARAMS: 'autoPlay=true&nextEpisode=true&episodeSelector=true&color=8B5CF6',
   VIDKING_MOVIE_PARAMS: 'autoPlay=true&color=8B5CF6',
@@ -42,6 +38,11 @@ const CONFIG = {
   EMBED_MAPPL: {
     MOVIE: (id) => `https://mappl.tv/watch/movie/${id}`,
     TV: (id, s, e) => `https://mappl.tv/watch/tv/${id}/${s}/${e}`
+  },
+  // MeowTV - direct play links
+  EMBED_MEOWTV: {
+    MOVIE: (id) => `https://meowtv.ru/play/movie/${id}/1/1`,
+    TV: (id, s, e) => `https://meowtv.ru/play/tv/${id}/${s}/${e}`
   },
   // Default embed functions (Vidking globally)
   EMBED_MOVIE: (id) => `https://www.vidking.net/embed/movie/${id}?${CONFIG.VIDKING_MOVIE_PARAMS}`,
@@ -736,7 +737,7 @@ const DEFAULT_SETTINGS = {
 
 function normalizeSettings(input = {}) {
   const allowedThemes = new Set(['cinematic', 'midnight', 'light']);
-  const allowedSources = new Set(['mappl', 'embedmaster', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
+  const allowedSources = new Set(['mappl', 'meowtv', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
   return {
     theme: allowedThemes.has(input.theme) ? input.theme : DEFAULT_SETTINGS.theme,
     preferred_source: allowedSources.has(input.preferred_source) ? input.preferred_source : DEFAULT_SETTINGS.preferred_source,
@@ -775,8 +776,6 @@ function persistSettingsToStorage() {
 
 function getEmbedUrlForSource(source, type, id, season = 1, episode = 1) {
   switch (source) {
-    case 'embedmaster':
-      return type === 'tv' ? CONFIG.EMBED_EMBEDMASTER.TV(id, season, episode) : CONFIG.EMBED_EMBEDMASTER.MOVIE(id);
     case 'vidking':
       return type === 'tv' ? CONFIG.EMBED_VIDKING.TV(id, season, episode) : CONFIG.EMBED_VIDKING.MOVIE(id);
     case 'videasy':
@@ -789,6 +788,8 @@ function getEmbedUrlForSource(source, type, id, season = 1, episode = 1) {
       return type === 'tv' ? CONFIG.EMBED_CINEZO.TV(id, season, episode) : CONFIG.EMBED_CINEZO.MOVIE(id);
     case 'mappl':
       return type === 'tv' ? CONFIG.EMBED_MAPPL.TV(id, season, episode) : CONFIG.EMBED_MAPPL.MOVIE(id);
+    case 'meowtv':
+      return type === 'tv' ? CONFIG.EMBED_MEOWTV.TV(id, season, episode) : CONFIG.EMBED_MEOWTV.MOVIE(id);
     default:
       return type === 'tv' ? CONFIG.EMBED_VIDKING.TV(id, season, episode) : CONFIG.EMBED_VIDKING.MOVIE(id);
   }
@@ -800,21 +801,6 @@ function getEmbedSandboxForSource(source) {
     return 'allow-scripts allow-same-origin allow-presentation';
   }
   return '';
-}
-
-function escapeAttr(value = '') {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function buildWatchPlayerHtml({ url, sandbox = '' }) {
-  const safeUrl = escapeAttr(url || 'about:blank');
-  // Add broad allow attributes and vendor fullscreen flags to maximize provider compatibility
-  const allowList = 'accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; geolocation';
-  return `<iframe class="watch-player" id="watchPlayer" src="${safeUrl}" ${sandbox ? `sandbox="${sandbox}"` : ''} allow="${allowList}" allowfullscreen webkitallowfullscreen mozallowfullscreen referrerpolicy="origin"></iframe>`;
 }
 
 async function fetchUserSettings() {
@@ -906,52 +892,6 @@ function toggleAuthMode() {
   $('#authSwitchText').textContent = window.isLoginMode ? "Don't have an account?" : "Already have an account?";
   $('#authSwitchBtn').textContent = window.isLoginMode ? 'Register' : 'Sign In';
 }
-
-// Toggle the floating watch controls (show/hide Back and Server buttons)
-window.toggleWatchControls = function(btn) {
-  try {
-    const wrapper = btn.closest('.watch-floating-controls');
-    if (!wrapper) return;
-    const expanded = wrapper.getAttribute('data-expanded') === 'true';
-    wrapper.setAttribute('data-expanded', String(!expanded));
-    btn.setAttribute('aria-expanded', String(!expanded));
-    const icon = btn.querySelector('.toggle-icon');
-    if (icon) icon.textContent = !expanded ? '‹' : '›';
-    // Update title for clarity
-    btn.title = !expanded ? 'Hide controls' : 'Show controls';
-  } catch (e) {
-    console.error('toggleWatchControls error', e);
-  }
-};
-
-// Toggle controls from the left-middle handle (moves/animates the floating controls)
-window.toggleLeftControls = function(btn) {
-  try {
-    const wrapper = document.querySelector('.watch-floating-controls');
-    if (!wrapper) return;
-    const isVisible = wrapper.classList.toggle('visible');
-    btn.setAttribute('aria-expanded', String(isVisible));
-    btn.title = isVisible ? 'Hide controls' : 'Show controls';
-  } catch (e) {
-    console.error('toggleLeftControls error', e);
-  }
-};
-
-// Helper: force the watch iframe into fullscreen from parent (works around some embed issues)
-window.enterWatchFullscreen = function() {
-  try {
-    const iframe = document.getElementById('watchPlayer');
-    if (!iframe) return showToast && showToast('Player not found', 'error');
-    if (iframe.requestFullscreen) return iframe.requestFullscreen();
-    if (iframe.webkitRequestFullscreen) return iframe.webkitRequestFullscreen();
-    if (iframe.mozRequestFullScreen) return iframe.mozRequestFullScreen();
-    if (iframe.msRequestFullscreen) return iframe.msRequestFullscreen();
-    showToast && showToast('Fullscreen not supported', 'error');
-  } catch (e) {
-    console.error('enterWatchFullscreen error', e);
-    showToast && showToast('Fullscreen failed: ' + (e.message || e), 'error');
-  }
-};
 
 async function handleAuth(e) {
   e.preventDefault();
@@ -1993,12 +1933,8 @@ async function loadAnimeWatch(id, episodeNum = 1) {
     watchContainer.innerHTML = `
       <div class="watch-layout">
         <div class="watch-main">
-          <button class="watch-left-handle" aria-expanded="false" onclick="toggleLeftControls(this)" title="Show controls" style="border-radius:999px; padding:10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px); position:absolute; left:18px; top:50%; transform:translateY(-50%); z-index:110;">
-            <span class="left-icon">≡</span>
-          </button>
-          <div class="watch-floating-controls" data-expanded="true">
+          <div class="watch-floating-controls">
             <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
-            <button class="btn-secondary" onclick="enterWatchFullscreen()" title="Fullscreen" style="border-radius:999px; padding: 10px 12px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">⤢</button>
             <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar')?.classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ Servers & Episodes</button>
           </div>
           <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh; background:#000;">
@@ -2597,8 +2533,8 @@ async function loadWatch(type, id, season = 1, episode = 1) {
         <span class="watch-panel-sub">select provider</span>
       </div>
       <div class="server-grid">
+        <button class="server-btn server-option ${selectedSource === 'meowtv' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'meowtv', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">MeowTV</button>
         <button class="server-btn server-option ${selectedSource === 'mappl' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'mappl', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Mappl.tv</button>
-        <button class="server-btn server-option ${selectedSource === 'embedmaster' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'embedmaster', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">EmbedMaster</button>
         <button class="server-btn server-option ${selectedSource === 'vidking' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidking', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidKing</button>
         <button class="server-btn server-option ${selectedSource === 'videasy' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'videasy', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">Videasy</button>
         <button class="server-btn server-option ${selectedSource === 'vidplus' ? 'active' : ''}" onclick="switchServer(this, '${id}', '${mediaType}', 'vidplus', ${activeSeason || 1}, ${activeEpisode || 1}, '${imdbId}')">VidPlus</button>
@@ -2628,12 +2564,8 @@ async function loadWatch(type, id, season = 1, episode = 1) {
   $('#watchContainer').innerHTML = `
     <div class="watch-layout">
       <div class="watch-main">
-        <button class="watch-left-handle" aria-expanded="false" onclick="toggleLeftControls(this)" title="Show controls" style="border-radius:999px; padding:10px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px); position:absolute; left:18px; top:50%; transform:translateY(-50%); z-index:110;">
-          <span class="left-icon">≡</span>
-        </button>
-        <div class="watch-floating-controls" data-expanded="true">
+        <div class="watch-floating-controls">
           <button class="btn-secondary" onclick="window.goBackFromWatch()" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">← Back</button>
-          <button class="btn-secondary" onclick="enterWatchFullscreen()" title="Fullscreen" style="border-radius:999px; padding: 10px 12px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">⤢</button>
           <button class="btn-secondary" onclick="document.querySelector('.watch-sidebar').classList.toggle('open')" style="border-radius:999px; padding: 10px 16px; background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)">☰ ${mediaType === 'tv' ? 'Servers & Episodes' : 'Servers'}</button>
         </div>
         <div id="playerWrap" style="position:relative; width: 100vw; height: 100vh;">
@@ -2641,7 +2573,7 @@ async function loadWatch(type, id, season = 1, episode = 1) {
             <span>Resuming from ${Math.floor(savedPos/60)}m ${savedPos%60}s</span>
             <button onclick="this.parentElement.remove()" style="color:var(--text-secondary); font-size:16px;">&times;</button>
           </div>` : ''}
-          <div id="watchPlayerMount">${buildWatchPlayerHtml({ url: embedUrl, sandbox: embedSandbox })}</div>
+          <iframe class="watch-player" id="watchPlayer" src="${embedUrl}" ${embedSandbox ? `sandbox="${embedSandbox}"` : ''} allowfullscreen allow="autoplay; encrypted-media; fullscreen" referrerpolicy="origin"></iframe>
         </div>
       </div>
       <div class="watch-sidebar">
@@ -2713,15 +2645,20 @@ window.switchServer = function(btn, id, type, server, season, episode, imdbId = 
   if (btn) btn.classList.add('active');
 
   saveUserSettings({ preferred_source: server }, true);
-  const mount = $('#watchPlayerMount');
-  if (!mount) return;
   const url = getEmbedUrlForSource(server, type, id, season, episode);
   const sandbox = getEmbedSandboxForSource(server);
-  mount.innerHTML = buildWatchPlayerHtml({ url, sandbox });
+
+  const player = $('#watchPlayer');
+  if (!player) return;
+
+  if (sandbox) player.setAttribute('sandbox', sandbox);
+  else player.removeAttribute('sandbox');
 
   if (type === 'tv') {
     markTvEpisodeSelection(id, season, episode);
   }
+
+  player.src = url;
 };
 
 /* ---------- Watchlist Page ---------- */
