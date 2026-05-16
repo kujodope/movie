@@ -730,7 +730,7 @@ window.goToTvEpisodeFromWatch = function(id, season, episode) {
 };
 const DEFAULT_SETTINGS = {
   theme: 'cinematic',
-  preferred_source: 'mappl',
+  preferred_source: 'meowtv',
   autoplay_next: true,
   auto_open_servers: false,
 };
