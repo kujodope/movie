@@ -188,7 +188,7 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS user_settings (
       user_id INTEGER PRIMARY KEY,
       theme TEXT NOT NULL DEFAULT 'cinematic',
-      preferred_source TEXT NOT NULL DEFAULT 'videasy',
+      preferred_source TEXT NOT NULL DEFAULT 'meowtv',
       autoplay_next INTEGER NOT NULL DEFAULT 1,
       auto_open_servers INTEGER NOT NULL DEFAULT 0,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -358,7 +358,7 @@ app.get('/api/me', authenticateToken, (req, res) => {
 app.get('/api/settings', authenticateToken, (req, res) => {
   const defaults = {
     theme: 'cinematic',
-    preferred_source: 'videasy',
+    preferred_source: 'meowtv',
     autoplay_next: 1,
     auto_open_servers: 0,
   };
@@ -393,7 +393,7 @@ app.get('/api/settings', authenticateToken, (req, res) => {
 
 app.patch('/api/settings', authenticateToken, (req, res) => {
   const allowedThemes = new Set(['cinematic', 'midnight', 'light']);
-  const allowedSources = new Set(['mappl', 'embedmaster', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
+  const allowedSources = new Set(['meowtv', 'mappl', 'embedmaster', 'vidking', 'videasy', 'cinezo', 'vidplus', '111movies']);
 
   const inputTheme = req.body.theme;
   const inputPreferredSource = req.body.preferred_source;
@@ -401,7 +401,7 @@ app.patch('/api/settings', authenticateToken, (req, res) => {
   const inputAutoOpenServers = req.body.auto_open_servers;
 
   const theme = allowedThemes.has(inputTheme) ? inputTheme : 'cinematic';
-  const preferredSource = allowedSources.has(inputPreferredSource) ? inputPreferredSource : 'videasy';
+  const preferredSource = allowedSources.has(inputPreferredSource) ? inputPreferredSource : 'meowtv';
   const autoplayNext = inputAutoplayNext ? 1 : 0;
   const autoOpenServers = inputAutoOpenServers ? 1 : 0;
 
