@@ -1140,16 +1140,8 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">Cloud Sync & Accounts</div>
-      <!-- If database not connected -->
-      <div id="sidebar-db-disconnected" style="display: block;">
-        <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem; line-height: 1.4;">Connect a Supabase project if you want optional cloud backups. Username accounts still work locally without it.</p>
-        <button class="sidebar-action" id="sidebar-connect-db-btn" style="color: var(--accent);">
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-          Connect Cloud Database
-        </button>
-      </div>
       <!-- If database connected but guest -->
-      <div id="sidebar-db-connected-guest" style="display: none;">
+      <div id="sidebar-db-connected-guest" style="display: block;">
         <div style="font-size: 0.85rem; color: #4ad17e; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">
           <span style="width: 8px; height: 8px; border-radius: 50%; background: #4ad17e; display: inline-block;"></span>
           Cloud Sync Ready
@@ -1157,10 +1149,6 @@
         <button class="sidebar-action" id="sidebar-login-btn">
           <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"/></svg>
           Sign In / Register
-        </button>
-        <button class="sidebar-action" id="sidebar-db-settings-btn">
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
-          Connection Settings
         </button>
       </div>
       <!-- If logged in -->
@@ -1184,35 +1172,6 @@
         <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         Clear All Data
       </button>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────── DATABASE CONFIG MODAL ─────────────── -->
-<div class="setup-backdrop" id="db-config-backdrop">
-  <div class="setup-card" style="max-width: 480px; position: relative;">
-    <div class="setup-logo">Database Connection</div>
-    <p class="setup-subtitle" style="margin-bottom: 1.5rem;">Sync your history and wishlist to the cloud. Create a free project on <a href="https://supabase.com" target="_blank" style="color:var(--accent); text-decoration: underline;">Supabase</a> and enter credentials below.</p>
-    
-    <div class="setup-field">
-      <label class="setup-label">Supabase URL</label>
-      <input class="setup-input" id="db-url-input" placeholder="https://your-project.supabase.co" />
-    </div>
-    <div class="setup-field" style="margin-top: 1rem;">
-      <label class="setup-label">Supabase Anon Public Key</label>
-      <input class="setup-input" id="db-key-input" type="password" placeholder="Public Anon Key (eyJhbGciOi...)" />
-    </div>
-    
-    <div class="setup-actions" style="margin-top: 2rem; display: flex; gap: 0.8rem;">
-      <button class="setup-go" id="db-save-btn" style="flex: 2;">Connect & Save</button>
-      <button class="setup-skip" id="db-cancel-btn" style="flex: 1; margin: 0; background: var(--card); border: 1px solid var(--line); color: var(--text);">Cancel</button>
-    </div>
-    
-    <div class="setup-instructions" style="margin-top: 1.8rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1.2rem; text-align: left; line-height: 1.4;">
-      <strong>Optional cloud sync:</strong> If you want cloud backups, keep the Supabase connection fields filled in. The app will still work locally even if sync is not configured.<br/>
-      <pre style="background: rgba(0,0,0,0.4); padding: 0.5rem; border-radius: 4px; overflow-x: auto; margin-top: 0.4rem; font-family: monospace; font-size: 0.75rem;">Cloud sync is best-effort only.
-Your username account is stored locally in the browser.
-If Supabase is connected, watchlist/history/progress may sync automatically.</pre>
     </div>
   </div>
 </div>
@@ -2369,16 +2328,6 @@ function closeProfileSidebar() {
 }
 
 /* ─── CLOUD DB & AUTH MODAL WIRING ─── */
-function openDbConfigModal() {
-  $('db-url-input').value = localStorage.getItem('gedatv_supabase_url') || '';
-  $('db-key-input').value = localStorage.getItem('gedatv_supabase_key') || '';
-  $('db-config-backdrop').classList.add('open');
-}
-
-function closeDbConfigModal() {
-  $('db-config-backdrop').classList.remove('open');
-}
-
 let isAuthRegisterState = false;
 
 function openAuthModal() {
@@ -2415,26 +2364,17 @@ function updateAuthModalState() {
 
 async function refreshUserSessionUI() {
   if (!window.Cloud) return;
-  const isDbConnected = Cloud.isConnected();
-  const disconnectedArea = $('sidebar-db-disconnected');
   const connectedGuestArea = $('sidebar-db-connected-guest');
   const loggedInArea = $('sidebar-db-logged-in');
-  
-  if (!isDbConnected) {
-    disconnectedArea.style.display = 'block';
+
+  const user = await Cloud.getCurrentUser();
+  if (user) {
     connectedGuestArea.style.display = 'none';
-    loggedInArea.style.display = 'none';
+    loggedInArea.style.display = 'block';
+    $('sidebar-user-email').textContent = user.username ? `@${user.username}` : '';
   } else {
-    disconnectedArea.style.display = 'none';
-    const user = await Cloud.getCurrentUser();
-    if (user) {
-      connectedGuestArea.style.display = 'none';
-      loggedInArea.style.display = 'block';
-      $('sidebar-user-email').textContent = user.username ? `@${user.username}` : '';
-    } else {
-      connectedGuestArea.style.display = 'block';
-      loggedInArea.style.display = 'none';
-    }
+    connectedGuestArea.style.display = 'block';
+    loggedInArea.style.display = 'none';
   }
   
   updateNavbarProfile();
@@ -2508,36 +2448,6 @@ function initProfileSystem() {
   $('sidebar-goto-continue').addEventListener('click', () => {
     closeProfileSidebar();
     scrollToSection('continue');
-  });
-
-  /* DB Config Buttons */
-  $('sidebar-connect-db-btn').addEventListener('click', openDbConfigModal);
-  $('sidebar-db-settings-btn').addEventListener('click', openDbConfigModal);
-  $('db-cancel-btn').addEventListener('click', closeDbConfigModal);
-  $('db-config-backdrop').addEventListener('click', (e) => {
-    if (e.target === $('db-config-backdrop')) closeDbConfigModal();
-  });
-  
-  $('db-save-btn').addEventListener('click', () => {
-    const url = $('db-url-input').value.trim();
-    const key = $('db-key-input').value.trim();
-    
-    if (!url || !key) {
-      toast("Both URL and Anon Key are required!");
-      return;
-    }
-    
-    localStorage.setItem('gedatv_supabase_url', url);
-    localStorage.setItem('gedatv_supabase_key', key);
-    
-    const success = Cloud.init();
-    if (success) {
-      toast("Database connected successfully!");
-      closeDbConfigModal();
-      refreshUserSessionUI();
-    } else {
-      toast("Failed to initialize database client. Check settings.");
-    }
   });
 
   /* Auth Actions & Modals */

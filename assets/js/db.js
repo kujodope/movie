@@ -3,8 +3,8 @@
   let supabase = null;
   let syncTimeout = null;
 
-  const DEFAULT_URL = "https://legcqcbgrveypwgfsmaf.supabase.co";
-  const DEFAULT_KEY = "sb_publishable_CCgGgqrboF9q29is1VCUgw_jatWsNgI";
+  const SUPABASE_URL = 'https://legcqcbgrveypwgfsmaf.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_CCgGgqrboF9q29is1VCUgw_jatWsNgI';
   const AUTH_USERS_KEY = 'gedatv_accounts_local';
   const AUTH_SESSION_KEY = 'gedatv_auth_session';
   const USER_DATA_PREFIX = 'gedatv_userdata_';
@@ -172,17 +172,14 @@
   }
 
   function initSupabase() {
-    const url = localStorage.getItem('gedatv_supabase_url') || DEFAULT_URL;
-    const key = localStorage.getItem('gedatv_supabase_key') || DEFAULT_KEY;
-    if (url && key && window.supabase) {
-      try {
-        supabase = window.supabase.createClient(url, key);
-        return true;
-      } catch (e) {
-        console.error("Failed to initialize Supabase:", e);
-      }
+    if (!window.supabase) return false;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+      return true;
+    } catch (e) {
+      console.error("Failed to initialize Supabase:", e);
+      return false;
     }
-    return false;
   }
 
   async function uploadUserData() {
