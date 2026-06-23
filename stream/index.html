@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GedaTv — Watch</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/db.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -338,7 +340,106 @@ const tmdb = async path => {
 
 let state = null;          // { type, id, season, episode, server, title }
 let tvData = null;         // /tv/{id} details
+let mediaMeta = null;      // cached item tmdb details
 const seasonCache = {};    // cached season episode lists
+
+/* ─── LOCAL STORAGE DATA LAYERS (ported/simplified for player) ─── */
+const History = {
+  KEY: 'gedatv_history',
+  MAX: 100,
+  _get() { try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch { return []; } },
+  _save(list) {
+    localStorage.setItem(this.KEY, JSON.stringify(list));
+    if (window.Cloud) Cloud.sync();
+  },
+  add(item) {
+    const list = this._get();
+    const key = `${item.type}-${item.id}`;
+    const idx = list.findIndex(h => `${h.type}-${h.id}` === key);
+    if (idx >= 0) list.splice(idx, 1);
+    list.unshift({
+      id: parseInt(item.id),
+      type: item.type,
+      title: item.title || 'Untitled',
+      poster_path: item.poster_path,
+      backdrop_path: item.backdrop_path,
+      vote_average: item.vote_average,
+      release_date: item.release_date || item.first_air_date,
+      watchedAt: new Date().toISOString(),
+      season: item.season || undefined,
+      episode: item.episode || undefined,
+    });
+    if (list.length > this.MAX) list.length = this.MAX;
+    this._save(list);
+  }
+};
+
+const Progress = {
+  KEY: 'gedatv_progress',
+  _get() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch { return {}; } },
+  _save(data) {
+    localStorage.setItem(this.KEY, JSON.stringify(data));
+    if (window.Cloud) Cloud.sync();
+  },
+  _key(id, type) { return `${type}-${id}`; },
+  set(item, extra = {}) {
+    const data = this._get();
+    const key = this._key(item.id, item.type);
+    data[key] = {
+      id: parseInt(item.id),
+      type: item.type,
+      title: item.title || 'Untitled',
+      poster_path: item.poster_path,
+      backdrop_path: item.backdrop_path,
+      vote_average: item.vote_average,
+      release_date: item.release_date || item.first_air_date,
+      lastWatched: new Date().toISOString(),
+      progress: extra.progress !== undefined ? extra.progress : (data[key]?.progress || 0.05),
+      season: extra.season || undefined,
+      episode: extra.episode || undefined,
+      server: extra.server || undefined,
+    };
+    this._save(data);
+  }
+};
+
+/* ─── PROGRESS ESTIMATION ─── */
+let startTime = Date.now();
+let currentEstimatedProgress = 0.05;
+
+function trackWatch() {
+  if (!state || !mediaMeta) return;
+  const item = {
+    id: state.id,
+    type: state.type,
+    title: state.title,
+    poster_path: mediaMeta.poster_path,
+    backdrop_path: mediaMeta.backdrop_path,
+    vote_average: mediaMeta.vote_average,
+    release_date: mediaMeta.release_date || mediaMeta.first_air_date,
+    season: state.type === 'tv' ? state.season : undefined,
+    episode: state.type === 'tv' ? state.episode : undefined,
+  };
+  History.add(item);
+  Progress.set(item, {
+    season: state.type === 'tv' ? state.season : undefined,
+    episode: state.type === 'tv' ? state.episode : undefined,
+    server: state.server,
+    progress: currentEstimatedProgress
+  });
+}
+
+function startProgressTracking() {
+  startTime = Date.now();
+  if (window.progressInterval) clearInterval(window.progressInterval);
+  window.progressInterval = setInterval(() => {
+    const elapsedSeconds = (Date.now() - startTime) / 1000;
+    const totalSeconds = state.type === 'movie' ? 120 * 60 : 45 * 60;
+    const initialSeconds = state.initialProgressSeconds || 0;
+    currentEstimatedProgress = Math.min(Math.max(0.05, (initialSeconds + elapsedSeconds) / totalSeconds), 0.95);
+    trackWatch();
+  }, 10000); // Save every 10 seconds
+}
 
 /* ─── PARAMS ─── */
 function readParams() {
@@ -353,7 +454,9 @@ function readParams() {
     server = (saved && serverUrlResolvers[saved]) ? saved : 1;
   }
 
-  const out = { type, id, server };
+  const timestamp = parseInt(p.get('t'), 10) || null;
+
+  const out = { type, id, server, timestamp, initialProgressSeconds: timestamp || 0 };
   if (type === 'tv') {
     out.season  = parseInt(p.get('s'), 10) || 1;
     out.episode = parseInt(p.get('e'), 10) || 1;
@@ -370,27 +473,55 @@ function syncUrl() {
   history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
 }
 
+/* ─── TIMESTAMP EMBED HELPER ─── */
+function appendStartTime(url, serverId, seconds) {
+  if (!seconds || seconds <= 15) return url;
+  try {
+    const u = new URL(url);
+    if (serverId === 1) {
+      u.searchParams.set('t', Math.round(seconds));
+    } else if (serverId === 6) {
+      u.searchParams.set('start', Math.round(seconds));
+    } else {
+      u.searchParams.set('start', Math.round(seconds));
+      u.searchParams.set('t', Math.round(seconds));
+    }
+    return u.toString();
+  } catch (err) {
+    return url;
+  }
+}
+
 /* ─── PLAYER ─── */
 function loadPlayer() {
-  const src = serverUrlResolvers[state.server](state);
+  if (state && state.title && mediaMeta) {
+    trackWatch();
+    startTime = Date.now();
+  }
+
+  let src = serverUrlResolvers[state.server](state);
+  if (state.timestamp) {
+    src = appendStartTime(src, state.server, state.timestamp);
+    state.initialProgressSeconds = state.timestamp;
+    state.timestamp = null; // Clear so it only triggers on first load
+  } else {
+    state.initialProgressSeconds = 0;
+  }
+
+  // Set the start progress directly
+  const totalSeconds = state.type === 'movie' ? 120 * 60 : 45 * 60;
+  currentEstimatedProgress = Math.min(Math.max(0.05, (state.initialProgressSeconds || 0) / totalSeconds), 0.95);
+
   const loader = $('player-loading');
   loader.classList.remove('hide');
 
-  // Recreate the iframe on every load so the Permissions Policy
-  // (allow="fullscreen; ...") is re-applied for the new origin.
-  // Navigating an existing iframe via contentWindow.location drops the
-  // fullscreen delegation for cross-origin servers, which is why fullscreen
-  // only worked for the first/Rakan server before.
   const old = $('player');
   const frame = document.createElement('iframe');
   frame.id = 'player';
   frame.allowFullscreen = true;
-  // Use "*" so the fullscreen permission cascades to nested cross-origin
-  // iframes (Xayah / Ekko load the real player inside a second iframe).
   frame.setAttribute('allow', 'autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; web-share *');
   frame.referrerPolicy = 'origin';
   frame.onload = () => loader.classList.add('hide');
-  // Use replace so iframe loads don't pollute the browser history stack
   frame.src = src;
   old.replaceWith(frame);
 
@@ -441,8 +572,11 @@ async function setupTv() {
   try {
     tvData = await tmdb(`/tv/${state.id}`);
     if (!tvData || (!tvData.name && !tvData.original_name)) throw new Error('not found');
+    mediaMeta = tvData;
     state.title = tvData.name || tvData.original_name;
     updateTitleBar();
+    trackWatch();
+    startProgressTracking();
 
     const seasons = (tvData.seasons || []).filter(s => s.season_number > 0);
     seasonSel.innerHTML = (seasons.length ? seasons : [{ season_number: 1, episode_count: 1 }])
@@ -540,7 +674,10 @@ async function setupMovie() {
   try {
     const data = await tmdb(`/movie/${state.id}`);
     if (!data || (!data.title && !data.original_title)) throw new Error('not found');
+    mediaMeta = data;
     state.title = data.title || data.original_title;
+    trackWatch();
+    startProgressTracking();
   } catch {
     showFatal();
     return;
@@ -592,6 +729,26 @@ $('back-btn').addEventListener('click', () => {
       </div>`;
     document.title = 'GedaTv';
     return;
+  }
+
+  // Pre-load cloud database sync data
+  if (window.Cloud) {
+    Cloud.init();
+    try {
+      await Cloud.pull();
+      const localProg = JSON.parse(localStorage.getItem('gedatv_progress') || '{}');
+      const progressKey = `${state.type}-${state.id}`;
+      const savedProg = localProg[progressKey];
+      
+      const urlParams = new URLSearchParams(location.search);
+      if (!urlParams.has('t') && savedProg && savedProg.progress) {
+        const totalSeconds = state.type === 'movie' ? 7200 : 2700;
+        state.timestamp = Math.round(savedProg.progress * totalSeconds);
+        state.initialProgressSeconds = state.timestamp;
+      }
+    } catch (e) {
+      console.warn("Could not sync cloud data before play:", e);
+    }
   }
 
   buildServers();

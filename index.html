@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GedaTv — Watch Movies & TV</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./assets/js/db.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -616,6 +618,353 @@
       text-shadow: 0 0 40px rgba(229,9,20,0.35);
     }
 
+    /* ─────────────── PROFILE AVATAR BUTTON ─────────────── */
+    .profile-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: grid; place-items: center;
+      border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer; flex-shrink: 0;
+      font-size: 0.83rem; font-weight: 900; color: #fff;
+      letter-spacing: 0.02em;
+      transition: border-color .2s, transform .15s var(--ease), box-shadow .2s, filter .2s;
+      text-transform: uppercase;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .profile-btn:hover {
+      border-color: rgba(255,255,255,0.4);
+      transform: scale(1.08);
+      box-shadow: 0 0 18px rgba(229,9,20,0.25);
+    }
+
+    /* ─────────────── PROFILE SIDEBAR ─────────────── */
+    .sidebar-backdrop {
+      position: fixed; inset: 0; z-index: 700;
+      background: rgba(0,0,0,0.62);
+      backdrop-filter: blur(12px);
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s var(--ease);
+    }
+    .sidebar-backdrop.open { opacity: 1; pointer-events: all; }
+
+    .sidebar {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(380px, 90vw); z-index: 710;
+      background: linear-gradient(180deg, rgba(12,14,24,0.98), rgba(9,10,16,0.98));
+      border-left: 1px solid var(--line);
+      box-shadow: -24px 0 80px rgba(0,0,0,0.78);
+      transform: translateX(100%);
+      transition: transform .35s var(--ease);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-backdrop.open .sidebar { transform: translateX(0); }
+
+    .sidebar-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 1.4rem; border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    }
+    .sidebar-header h3 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em;
+    }
+    .sidebar-close {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--line);
+      color: #fff; cursor: pointer; font-size: 1.1rem;
+      display: grid; place-items: center; transition: background .2s;
+    }
+    .sidebar-close:hover { background: rgba(255,255,255,0.14); }
+
+    .sidebar-profile {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1.4rem; border-bottom: 1px solid var(--line);
+      background: radial-gradient(circle at top left, rgba(229,9,20,0.08), transparent 44%);
+    }
+    .sidebar-avatar {
+      width: 62px; height: 62px; border-radius: 18px;
+      display: grid; place-items: center;
+      font-size: 1.35rem; font-weight: 900; color: #fff;
+      border: 1px solid rgba(255,255,255,0.14);
+      flex-shrink: 0; text-transform: uppercase;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+    .sidebar-name {
+      font-size: 1.08rem; font-weight: 800; line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+    .sidebar-joined {
+      font-size: 0.74rem; color: var(--muted); margin-top: 2px;
+    }
+
+    .sidebar-stats {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 0; padding: 0; border-bottom: 1px solid var(--line);
+    }
+    .sidebar-stat {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 1rem 0.5rem;
+      border-right: 1px solid var(--line);
+    }
+    .sidebar-stat:last-child { border-right: none; }
+    .sidebar-stat-num {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.6rem; font-weight: 800; color: var(--text);
+      line-height: 1;
+    }
+    .sidebar-stat-label {
+      font-size: 0.66rem; font-weight: 600; color: var(--muted);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px;
+    }
+
+    .sidebar-section {
+      padding: 1rem 1.4rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .sidebar-section-title {
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem;
+    }
+
+    .sidebar-action {
+      display: flex; align-items: center; gap: 0.8rem;
+      padding: 0.7rem 0; cursor: pointer;
+      font-size: 0.9rem; font-weight: 600; color: var(--text);
+      transition: color .15s;
+      border: none; background: none; width: 100%;
+      font-family: inherit; text-align: left;
+    }
+    .sidebar-action:hover { color: var(--accent-h); }
+    .sidebar-action svg { flex-shrink: 0; opacity: 0.6; }
+    .sidebar-action.danger { color: #ff6b6b; }
+    .sidebar-action.danger:hover { color: #ff4444; }
+
+    .sidebar-edit-name {
+      display: flex; gap: 0.5rem; margin-top: 0.7rem;
+    }
+    .sidebar-name-input {
+      flex: 1; padding: 0.55rem 0.8rem;
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      color: var(--text); font-family: inherit; font-size: 0.88rem;
+      outline: none; transition: border-color .2s;
+    }
+    .sidebar-name-input:focus { border-color: var(--accent); }
+    .sidebar-save-btn {
+      padding: 0.55rem 1rem; background: var(--accent); border: none;
+      border-radius: 8px; color: #fff; font-weight: 700; font-size: 0.82rem;
+      cursor: pointer; font-family: inherit; transition: background .2s;
+    }
+    .sidebar-save-btn:hover { background: var(--accent-h); }
+
+    .sidebar-colors {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
+    }
+    .sidebar-color {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid transparent; cursor: pointer;
+      transition: border-color .15s, transform .15s;
+    }
+    .sidebar-color:hover { transform: scale(1.15); }
+    .sidebar-color.active { border-color: #fff; transform: scale(1.15); }
+
+    /* ─────────────── SETUP MODAL (first-time) ─────────────── */
+    .setup-backdrop {
+      position: fixed; inset: 0; z-index: 800;
+      background: radial-gradient(circle at top, rgba(229,9,20,0.18), rgba(0,0,0,0.9) 42%);
+      backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity .35s var(--ease);
+    }
+    .setup-backdrop.open { opacity: 1; pointer-events: all; }
+
+    .setup-card {
+      background: linear-gradient(180deg, rgba(17,19,31,0.98), rgba(10,12,20,0.98));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg); box-shadow: 0 30px 90px rgba(0,0,0,0.85);
+      width: 100%; max-width: 420px; padding: 2.2rem;
+      transform: translateY(20px) scale(0.97);
+      transition: transform .35s var(--ease);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .setup-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(229,9,20,0.18), transparent 32%),
+                  radial-gradient(circle at bottom right, rgba(59,130,246,0.12), transparent 28%);
+      pointer-events: none;
+    }
+    .setup-card > * { position: relative; z-index: 1; }
+    .setup-backdrop.open .setup-card { transform: none; }
+
+    .setup-logo {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.95rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.04em;
+      margin-bottom: 0.55rem;
+    }
+    .setup-subtitle {
+      font-size: 0.95rem; color: var(--muted); margin-bottom: 1.8rem;
+      line-height: 1.45;
+    }
+    .setup-field { margin-bottom: 1.2rem; text-align: left; }
+    .setup-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;
+      display: block;
+    }
+    .setup-input {
+      width: 100%; padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      color: var(--text); font-family: inherit; font-size: 1rem;
+      outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .setup-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: rgba(255,255,255,0.06); }
+
+    .setup-colors {
+      display: flex; gap: 0.6rem; justify-content: center;
+      flex-wrap: wrap; margin-bottom: 1.6rem;
+    }
+    .setup-color {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 3px solid transparent; cursor: pointer;
+      transition: border-color .15s, transform .15s;
+    }
+    .setup-color:hover { transform: scale(1.15); }
+    .setup-color.active { border-color: #fff; transform: scale(1.18); box-shadow: 0 0 16px rgba(255,255,255,0.2); }
+
+    .setup-go {
+      width: 100%; padding: 0.9rem; font-size: 1rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #ff3b4c); color: #fff; border: none; border-radius: 12px;
+      cursor: pointer; font-family: inherit;
+      transition: transform .15s, box-shadow .2s, filter .2s;
+      box-shadow: 0 12px 24px rgba(229,9,20,0.24);
+    }
+    .setup-go:hover { transform: translateY(-1px); filter: brightness(1.03); }
+    .setup-go:active { transform: scale(0.97); }
+
+    .setup-skip {
+      display: inline-block; margin-top: 0.9rem;
+      font-size: 0.84rem; color: var(--muted); cursor: pointer;
+      background: none; border: none; font-family: inherit;
+      transition: color .15s;
+    }
+    .setup-skip:hover { color: var(--text); }
+
+    /* ─────────────── CONTINUE WATCHING ROW ─────────────── */
+    .cw-card {
+      position: relative; flex: 0 0 auto;
+      width: clamp(220px, 22vw, 320px);
+      border-radius: var(--radius); overflow: hidden; cursor: pointer;
+      background: var(--card);
+      transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+    }
+    .cw-card:hover {
+      transform: scale(1.05) translateY(-4px);
+      box-shadow: 0 22px 48px rgba(0,0,0,0.7); z-index: 6;
+    }
+    .cw-thumb {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block;
+      background: var(--bg-elev);
+    }
+    .cw-thumb-placeholder {
+      width: 100%; aspect-ratio: 16/9; display: flex; align-items: center;
+      justify-content: center; background: var(--bg-elev); color: var(--muted);
+      font-size: 2rem;
+    }
+    .cw-progress {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+      background: rgba(255,255,255,0.15);
+    }
+    .cw-progress-bar {
+      height: 100%; background: var(--accent); border-radius: 0 2px 2px 0;
+      transition: width .3s var(--ease);
+    }
+    .cw-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 0.8rem;
+      background: linear-gradient(to top, rgba(8,8,11,0.92) 10%, rgba(8,8,11,0.3) 50%, transparent 70%);
+    }
+    .cw-play-icon {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(0,0,0,0.7); border: 2px solid rgba(255,255,255,0.3);
+      display: grid; place-items: center;
+      opacity: 0; transition: opacity .2s;
+    }
+    .cw-card:hover .cw-play-icon { opacity: 1; }
+    .cw-title {
+      font-size: 0.88rem; font-weight: 700; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .cw-ep {
+      font-size: 0.72rem; color: var(--muted); margin-top: 2px;
+    }
+    .cw-remove {
+      position: absolute; top: 6px; right: 6px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; font-size: 0.8rem; cursor: pointer;
+      display: grid; place-items: center;
+      opacity: 0; transition: opacity .2s, background .15s;
+    }
+    .cw-card:hover .cw-remove { opacity: 1; }
+    .cw-remove:hover { background: rgba(229,9,20,0.7); }
+
+    /* ─────────────── WISHLIST HEART ─────────────── */
+    .card-heart {
+      position: absolute; top: 8px; right: 8px; z-index: 5;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7); cursor: pointer;
+      display: grid; place-items: center;
+      opacity: 0; transition: opacity .2s, transform .15s, background .15s, color .15s;
+    }
+    .card:hover .card-heart { opacity: 1; }
+    .card-heart:hover { transform: scale(1.15); background: rgba(0,0,0,0.85); }
+    .card-heart.active { color: var(--accent-h); opacity: 1; }
+    .card-heart.active svg { fill: var(--accent-h); }
+    @keyframes heartPop {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.4); }
+      60% { transform: scale(0.9); }
+      100% { transform: scale(1); }
+    }
+    .card-heart.pop { animation: heartPop .4s var(--ease); }
+
+    /* Wishlist button in modal */
+    .modal-wishlist-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%; padding: 0.75rem; margin-top: 0.6rem;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--line);
+      border-radius: 7px; color: var(--text);
+      font-size: 0.92rem; font-weight: 600; cursor: pointer;
+      font-family: inherit;
+      transition: background .2s, border-color .2s, color .15s;
+    }
+    .modal-wishlist-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
+    .modal-wishlist-btn.active { color: var(--accent-h); border-color: rgba(229,9,20,0.4); background: rgba(229,9,20,0.08); }
+    .modal-wishlist-btn svg { transition: transform .2s; }
+    .modal-wishlist-btn.active svg { fill: var(--accent-h); }
+
+    /* ─────────────── HISTORY BADGE ─────────────── */
+    .card-history-badge {
+      position: absolute; bottom: 8px; left: 8px; z-index: 4;
+      font-size: 0.56rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 2px 6px; border-radius: 4px;
+      background: rgba(0,0,0,0.75); color: var(--muted);
+      display: flex; align-items: center; gap: 3px;
+      opacity: 0; transition: opacity .2s;
+    }
+    .card:hover .card-history-badge { opacity: 1; }
+
     /* ─────────────── RESPONSIVE ─────────────── */
     @media (max-width: 860px) {
       .nav-links { display: none; }
@@ -661,6 +1010,8 @@
 
 
 
+    <button class="profile-btn" id="profile-btn" title="Profile"></button>
+
     <div class="server-wrap">
       <button class="server-btn" id="server-btn">
         <span class="s-live"></span>
@@ -679,7 +1030,12 @@
 
 <!-- ─────────────── ROWS ─────────────── -->
 <main id="main">
-  <div id="rows-container"></div>
+  <div id="rows-container">
+    <div id="continue-row-container"></div>
+    <div id="wishlist-row-container"></div>
+    <div id="history-row-container"></div>
+    <div id="main-rows-container"></div>
+  </div>
 </main>
 
 <!-- ─────────────── SEARCH RESULTS ─────────────── -->
@@ -738,12 +1094,182 @@
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         Play
       </button>
+      <button class="modal-wishlist-btn" id="modal-wishlist-btn">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        <span id="modal-wishlist-text">Add to My List</span>
+      </button>
     </div>
   </div>
 </div>
 
 <!-- ─────────────── TOAST ─────────────── -->
 <div id="toast"></div>
+
+<!-- ─────────────── PROFILE SIDEBAR ─────────────── -->
+<div class="sidebar-backdrop" id="sidebar-backdrop">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>My Profile</h3>
+      <button class="sidebar-close" id="sidebar-close">✕</button>
+    </div>
+    <div class="sidebar-profile" id="sidebar-profile-area"></div>
+    <div class="sidebar-stats" id="sidebar-stats"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Profile</div>
+      <div class="sidebar-edit-name">
+        <input class="sidebar-name-input" id="sidebar-name-input" placeholder="Your name" maxlength="20" />
+        <button class="sidebar-save-btn" id="sidebar-save-name">Save</button>
+      </div>
+      <div class="sidebar-section-title" style="margin-top:1rem">Avatar Color</div>
+      <div class="sidebar-colors" id="sidebar-colors"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Quick Links</div>
+      <button class="sidebar-action" id="sidebar-goto-history">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Recently Watched
+      </button>
+      <button class="sidebar-action" id="sidebar-goto-wishlist">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        My List
+      </button>
+      <button class="sidebar-action" id="sidebar-goto-continue">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Continue Watching
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Cloud Sync & Accounts</div>
+      <!-- If database not connected -->
+      <div id="sidebar-db-disconnected" style="display: block;">
+        <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem; line-height: 1.4;">Connect a Supabase project if you want optional cloud backups. Username accounts still work locally without it.</p>
+        <button class="sidebar-action" id="sidebar-connect-db-btn" style="color: var(--accent);">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Connect Cloud Database
+        </button>
+      </div>
+      <!-- If database connected but guest -->
+      <div id="sidebar-db-connected-guest" style="display: none;">
+        <div style="font-size: 0.85rem; color: #4ad17e; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #4ad17e; display: inline-block;"></span>
+          Cloud Sync Ready
+        </div>
+        <button class="sidebar-action" id="sidebar-login-btn">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"/></svg>
+          Sign In / Register
+        </button>
+        <button class="sidebar-action" id="sidebar-db-settings-btn">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          Connection Settings
+        </button>
+      </div>
+      <!-- If logged in -->
+      <div id="sidebar-db-logged-in" style="display: none;">
+        <div style="font-size: 0.85rem; color: #4ad17e; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.4rem; justify-content: space-between; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #4ad17e; display: inline-block;"></span>
+            Synced to Cloud
+          </div>
+          <span id="sidebar-user-email" style="color: var(--muted); font-size: 0.8rem;"></span>
+        </div>
+        <button class="sidebar-action danger" id="sidebar-logout-btn">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"/></svg>
+          Sign Out / Disconnect
+        </button>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Data</div>
+      <button class="sidebar-action danger" id="sidebar-clear-data">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        Clear All Data
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── DATABASE CONFIG MODAL ─────────────── -->
+<div class="setup-backdrop" id="db-config-backdrop">
+  <div class="setup-card" style="max-width: 480px; position: relative;">
+    <div class="setup-logo">Database Connection</div>
+    <p class="setup-subtitle" style="margin-bottom: 1.5rem;">Sync your history and wishlist to the cloud. Create a free project on <a href="https://supabase.com" target="_blank" style="color:var(--accent); text-decoration: underline;">Supabase</a> and enter credentials below.</p>
+    
+    <div class="setup-field">
+      <label class="setup-label">Supabase URL</label>
+      <input class="setup-input" id="db-url-input" placeholder="https://your-project.supabase.co" />
+    </div>
+    <div class="setup-field" style="margin-top: 1rem;">
+      <label class="setup-label">Supabase Anon Public Key</label>
+      <input class="setup-input" id="db-key-input" type="password" placeholder="Public Anon Key (eyJhbGciOi...)" />
+    </div>
+    
+    <div class="setup-actions" style="margin-top: 2rem; display: flex; gap: 0.8rem;">
+      <button class="setup-go" id="db-save-btn" style="flex: 2;">Connect & Save</button>
+      <button class="setup-skip" id="db-cancel-btn" style="flex: 1; margin: 0; background: var(--card); border: 1px solid var(--line); color: var(--text);">Cancel</button>
+    </div>
+    
+    <div class="setup-instructions" style="margin-top: 1.8rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1.2rem; text-align: left; line-height: 1.4;">
+      <strong>Optional cloud sync:</strong> If you want cloud backups, keep the Supabase connection fields filled in. The app will still work locally even if sync is not configured.<br/>
+      <pre style="background: rgba(0,0,0,0.4); padding: 0.5rem; border-radius: 4px; overflow-x: auto; margin-top: 0.4rem; font-family: monospace; font-size: 0.75rem;">Cloud sync is best-effort only.
+Your username account is stored locally in the browser.
+If Supabase is connected, watchlist/history/progress may sync automatically.</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── AUTH MODAL ─────────────── -->
+<div class="setup-backdrop" id="auth-backdrop">
+  <div class="setup-card" style="max-width: 420px; position: relative;">
+    <button class="setup-skip" id="auth-close-btn" style="position: absolute; top: 1rem; right: 1.2rem; width: auto; padding: 0.4rem; background: none; border: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; height: auto;">✕</button>
+    
+    <div class="setup-logo" id="auth-title">Sign In</div>
+    <p class="setup-subtitle" id="auth-subtitle">Use your username to sign in or create a new account. Profile setup comes next.</p>
+    
+    <div id="auth-error-msg" style="color: #ff6b6b; font-size: 0.85rem; padding: 0.6rem; border-radius: 6px; background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.25); margin-bottom: 1.2rem; display: none; text-align: left; line-height: 1.4;"></div>
+    
+    <div class="setup-field" id="auth-name-field" style="display: none;">
+      <label class="setup-label">Profile Display Name</label>
+      <input class="setup-input" id="auth-name-input" placeholder="Enter your display name" maxlength="20" />
+    </div>
+    
+    <div class="setup-field" style="margin-top: 1rem;">
+      <label class="setup-label">Username</label>
+      <input class="setup-input" id="auth-username-input" type="text" placeholder="yourname" autocomplete="username" />
+    </div>
+    
+    <div class="setup-field" style="margin-top: 1rem;">
+      <label class="setup-label">Password</label>
+      <input class="setup-input" id="auth-password-input" type="password" placeholder="Enter password (min 6 chars)" />
+    </div>
+    
+    <div class="setup-actions" style="margin-top: 2rem;">
+      <button class="setup-go" id="auth-submit-btn">Sign In</button>
+    </div>
+    
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--muted);">
+      <span id="auth-toggle-label">Need an account?</span>
+      <button id="auth-toggle-btn" style="background: none; border: none; color: var(--accent); cursor: pointer; font-weight: 700; text-decoration: underline; margin-left: 0.3rem;">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── FIRST-TIME SETUP MODAL ─────────────── -->
+<div class="setup-backdrop" id="setup-backdrop">
+  <div class="setup-card">
+    <div class="setup-logo">GedaTv</div>
+    <p class="setup-subtitle">Welcome! Set up your profile to track your watch history, build a wishlist, and pick up where you left off.</p>
+    <div class="setup-field">
+      <label class="setup-label">Your Name</label>
+      <input class="setup-input" id="setup-name" placeholder="Enter your name" maxlength="20" autofocus />
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Avatar Color</label>
+      <div class="setup-colors" id="setup-colors"></div>
+    </div>
+    <button class="setup-go" id="setup-go">Get Started</button>
+    <button class="setup-skip" id="setup-skip">Skip for now</button>
+  </div>
+</div>
 
 <script>
 /* ─── CONFIG ─── */
@@ -793,6 +1319,177 @@ let heroTimer = null;
 /* digital release cache — keyed by movie id */
 const digitalCache = {};
 
+/* ─── AVATAR COLORS ─── */
+const AVATAR_COLORS = [
+  '#e50914', '#3b82f6', '#8b5cf6', '#06b6d4',
+  '#f59e0b', '#10b981', '#ec4899', '#f97316'
+];
+
+/* ─── PROFILE MANAGER ─── */
+const Profile = {
+  KEY: 'gedatv_profile',
+  get() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)); } catch { return null; }
+  },
+  set(data) {
+    const existing = this.get() || {};
+    const merged = { ...existing, ...data };
+    if (!merged.createdAt) merged.createdAt = new Date().toISOString();
+    localStorage.setItem(this.KEY, JSON.stringify(merged));
+    if (window.Cloud) Cloud.sync();
+    return merged;
+  },
+  exists() { return !!this.get(); },
+  clear() {
+    localStorage.removeItem(this.KEY);
+    if (window.Cloud) Cloud.sync();
+  },
+  initial(name) { return (name || '?')[0]; },
+};
+
+/* ─── HISTORY MANAGER ─── */
+const History = {
+  KEY: 'gedatv_history',
+  MAX: 100,
+  _get() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch { return []; }
+  },
+  _save(list) {
+    localStorage.setItem(this.KEY, JSON.stringify(list));
+    if (window.Cloud) Cloud.sync();
+  },
+  getAll() { return this._get(); },
+  add(item) {
+    const list = this._get();
+    const key = `${mediaOf(item)}-${item.id}`;
+    const idx = list.findIndex(h => `${h.type}-${h.id}` === key);
+    if (idx >= 0) list.splice(idx, 1);
+    list.unshift({
+      id: item.id,
+      type: mediaOf(item),
+      title: item.title || item.name || 'Untitled',
+      poster_path: item.poster_path,
+      backdrop_path: item.backdrop_path,
+      vote_average: item.vote_average,
+      release_date: item.release_date || item.first_air_date,
+      genre_ids: item.genre_ids,
+      watchedAt: new Date().toISOString(),
+      season: item._season || undefined,
+      episode: item._episode || undefined,
+    });
+    if (list.length > this.MAX) list.length = this.MAX;
+    this._save(list);
+  },
+  clear() {
+    localStorage.removeItem(this.KEY);
+    if (window.Cloud) Cloud.sync();
+  },
+  count() { return this._get().length; },
+};
+
+/* ─── WISHLIST MANAGER ─── */
+const Wishlist = {
+  KEY: 'gedatv_wishlist',
+  MAX: 200,
+  _get() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch { return []; }
+  },
+  _save(list) {
+    localStorage.setItem(this.KEY, JSON.stringify(list));
+    if (window.Cloud) Cloud.sync();
+  },
+  getAll() { return this._get(); },
+  has(id, type) {
+    // Use == (not ===) to handle number/string ID mismatch after JSON round-trips
+    return this._get().some(w => w.id == id && w.type === type);
+  },
+  toggle(item) {
+    const list = this._get();
+    const type = mediaOf(item);
+    const idx = list.findIndex(w => w.id == item.id && w.type === type);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+      this._save(list);
+      return false;
+    }
+    list.unshift({
+      id: item.id,
+      type,
+      title: item.title || item.name || 'Untitled',
+      poster_path: item.poster_path,
+      backdrop_path: item.backdrop_path,
+      vote_average: item.vote_average,
+      release_date: item.release_date || item.first_air_date,
+      genre_ids: item.genre_ids,
+      overview: item.overview,
+      savedAt: new Date().toISOString(),
+    });
+    if (list.length > this.MAX) list.length = this.MAX;
+    this._save(list);
+    return true;
+  },
+  remove(id, type) {
+    const list = this._get().filter(w => !(w.id == id && w.type === type));
+    this._save(list);
+  },
+  clear() {
+    localStorage.removeItem(this.KEY);
+    if (window.Cloud) Cloud.sync();
+  },
+  count() { return this._get().length; },
+};
+
+/* ─── PROGRESS / CONTINUE WATCHING MANAGER ─── */
+const Progress = {
+  KEY: 'gedatv_progress',
+  _get() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch { return {}; }
+  },
+  _save(data) {
+    localStorage.setItem(this.KEY, JSON.stringify(data));
+    if (window.Cloud) Cloud.sync();
+  },
+  _key(id, type) { return `${type}-${id}`; },
+  set(item, extra = {}) {
+    const data = this._get();
+    const type = mediaOf(item);
+    const key = this._key(item.id, type);
+    data[key] = {
+      id: item.id,
+      type,
+      title: item.title || item.name || 'Untitled',
+      poster_path: item.poster_path,
+      backdrop_path: item.backdrop_path,
+      vote_average: item.vote_average,
+      release_date: item.release_date || item.first_air_date,
+      lastWatched: new Date().toISOString(),
+      progress: extra.progress || data[key]?.progress || 0.05,
+      season: extra.season || undefined,
+      episode: extra.episode || undefined,
+      server: extra.server || undefined,
+    };
+    this._save(data);
+  },
+  get(id, type) {
+    return this._get()[this._key(id, type)] || null;
+  },
+  getAll() {
+    const data = this._get();
+    return Object.values(data).sort((a, b) => new Date(b.lastWatched) - new Date(a.lastWatched));
+  },
+  remove(id, type) {
+    const data = this._get();
+    delete data[this._key(id, type)];
+    this._save(data);
+  },
+  clear() {
+    localStorage.removeItem(this.KEY);
+    if (window.Cloud) Cloud.sync();
+  },
+  count() { return Object.keys(this._get()).length; },
+};
+
+
 /* ─── UTILS ─── */
 const $ = id => document.getElementById(id);
 const tmdb = async path => {
@@ -804,13 +1501,27 @@ const backdrop = (b, size = 'w1280') => b ? `${IMG_BASE}${size}${b}` : null;
 const year   = d => d ? d.slice(0,4) : '—';
 const rating = v => v ? v.toFixed(1) : '—';
 const matchPct = v => v ? Math.min(99, Math.round(v * 10)) : null;
-const mediaOf = item => item.media_type || (item.title ? 'movie' : 'tv');
+const mediaOf = item => item.media_type || item.type || (item.title ? 'movie' : 'tv');
 
 function fmtShortDate(d) {
   if (!d) return '';
   const dt = new Date(d);
   if (isNaN(dt)) return '';
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function timeAgo(dateStr) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  return `${diffDays}d ago`;
 }
 
 function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -905,8 +1616,8 @@ serverBtn.addEventListener('click', e => { e.stopPropagation(); serverMenu.class
 document.addEventListener('click', () => serverMenu.classList.remove('open'));
 
 /* ─── PLAYER URL ─── */
-function playerUrl(item, season = 1, episode = 1) {
-  const p = new URLSearchParams({ server: currentServer });
+function playerUrl(item, season = 1, episode = 1, { server = null, timestamp = null } = {}) {
+  const p = new URLSearchParams({ server: server || currentServer });
   const type = mediaOf(item);
   if (type === 'movie') {
     p.set('type', 'movie'); p.set('id', item.id);
@@ -914,7 +1625,17 @@ function playerUrl(item, season = 1, episode = 1) {
     p.set('type', 'tv'); p.set('id', item.id);
     p.set('s', season); p.set('e', episode);
   }
+  // Pass saved timestamp so the stream page can seek the player on load
+  if (timestamp && timestamp > 30) p.set('t', Math.round(timestamp));
   return `${PLAYER}?${p.toString()}`;
+}
+
+/* ─── PROGRESS → TIMESTAMP HELPER ─── */
+// Convert a stored progress ratio (0–1) back to seconds using standard durations
+function progressToSeconds(progress, type) {
+  if (!progress || progress <= 0.03) return 0;
+  const totalSecs = type === 'movie' ? 7200 : 2700; // 120 min movie / 45 min episode
+  return Math.round(progress * totalSecs);
 }
 
 /* ─── DIGITAL RELEASE FETCH (shared) ─── */
@@ -938,7 +1659,8 @@ async function fetchDigitalData(movieId) {
 
 /* ─── CARD ─── */
 // drDate: optional ISO date string — if provided and in the past, shows green badge on card
-function makeCard(item, { drDate = null } = {}) {
+// noRefresh: if true, heart toggle will NOT re-render user rows (use for cards inside wishlist/history rows)
+function makeCard(item, { drDate = null, noRefresh = false } = {}) {
   const type    = mediaOf(item);
   const isMovie = type === 'movie';
   const title   = item.title || item.name || 'Untitled';
@@ -948,12 +1670,20 @@ function makeCard(item, { drDate = null } = {}) {
 
   // Show DR badge on card if a valid past digital date is supplied
   const showDrBadge = drDate && new Date(drDate) <= new Date();
+  const inWishlist = Wishlist.has(item.id, type);
 
   const card = document.createElement('div');
   card.className = 'card';
+  // Store item id+type as data attrs so we can sync hearts across the page
+  card.dataset.itemId   = item.id;
+  card.dataset.itemType = type;
   card.innerHTML = `
     <span class="card-badge ${isMovie ? 'movie' : 'tv'}">${isMovie ? 'Film' : 'Series'}</span>
     ${showDrBadge ? `<span class="card-dr-badge"><span class="card-dr-dot"></span>Digital</span>` : ''}
+    <button class="card-heart ${inWishlist ? 'active' : ''}" aria-label="Add to wishlist">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+    </button>
+    ${item.watchedAt ? `<span class="card-history-badge"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${timeAgo(item.watchedAt)}</span>` : ''}
     ${imgSrc
       ? `<img class="card-poster" src="${imgSrc}" alt="${esc(title)}" loading="lazy" onerror="this.parentNode.replaceChild(makePlaceholder('${esc(title).replace(/'/g,"")}'),this)">`
       : `<div class="card-poster-placeholder"><span style="font-size:2rem">🎬</span><span>${esc(title)}</span></div>`}
@@ -967,6 +1697,22 @@ function makeCard(item, { drDate = null } = {}) {
     </div>`;
 
   card.addEventListener('click', () => openModal(item));
+
+  const heartBtn = card.querySelector('.card-heart');
+  heartBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isNowActive = Wishlist.toggle(item);
+    // Sync ALL heart buttons for this specific item across the page
+    document.querySelectorAll(`.card[data-item-id="${item.id}"][data-item-type="${type}"] .card-heart`).forEach(btn => {
+      btn.classList.toggle('active', isNowActive);
+    });
+    heartBtn.classList.add('pop');
+    setTimeout(() => heartBtn.classList.remove('pop'), 400);
+    toast(isNowActive ? `Added to My List` : `Removed from My List`);
+    updateModalWishlistState();
+    refreshUserRows();
+  });
+
   return card;
 }
 
@@ -1006,7 +1752,8 @@ function buildRow(cfg, { top10 = false } = {}) {
   row.querySelector('.arrow.left').addEventListener('click', () => scroller.scrollBy({ left: -step(), behavior: 'smooth' }));
   row.querySelector('.arrow.right').addEventListener('click', () => scroller.scrollBy({ left:  step(), behavior: 'smooth' }));
 
-  $('rows-container').appendChild(row);
+  const target = $('main-rows-container') || $('rows-container');
+  target.appendChild(row);
   return scroller;
 }
 
@@ -1245,6 +1992,7 @@ async function openModal(item) {
     drEl.style.display = 'none';
     await loadTvSeasons(item.id);
   }
+  updateModalWishlistState();
 
   $('modal-backdrop').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -1359,6 +2107,16 @@ $('modal-watch-btn').addEventListener('click', () => {
   if (!currentModalItem) return;
   const s = parseInt($('season-select')?.value  || 1);
   const e = parseInt($('episode-select')?.value || 1);
+  
+  // Track watch history and progress
+  const item = {
+    ...currentModalItem,
+    _season: currentModalItem.media_type === 'tv' ? s : undefined,
+    _episode: currentModalItem.media_type === 'tv' ? e : undefined
+  };
+  History.add(item);
+  Progress.set(item, { season: s, episode: e, server: currentServer });
+
   window.location.href = playerUrl(currentModalItem, s, e);
 });
 
@@ -1487,9 +2245,521 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
   });
 });
 
+/* ─── DYNAMIC WISHLIST & PROFILE INTEGRATION ─── */
+function updateModalWishlistState() {
+  if (!currentModalItem) return;
+  const type = mediaOf(currentModalItem);
+  const inList = Wishlist.has(currentModalItem.id, type);
+  const btn = $('modal-wishlist-btn');
+  const text = $('modal-wishlist-text');
+  if (btn && text) {
+    btn.classList.toggle('active', inList);
+    text.textContent = inList ? 'Remove from My List' : 'Add to My List';
+  }
+}
+
+// Wire up the modal wishlist button click
+$('modal-wishlist-btn').addEventListener('click', () => {
+  if (!currentModalItem) return;
+  const active = Wishlist.toggle(currentModalItem);
+  updateModalWishlistState();
+  toast(active ? `Added to My List` : `Removed from My List`);
+  refreshUserRows();
+});
+
+let setupColorSelected = AVATAR_COLORS[0];
+
+function openSetupModal(options = {}) {
+  const backdrop = $('setup-backdrop');
+  const colorsContainer = $('setup-colors');
+  colorsContainer.innerHTML = '';
+  setupColorSelected = AVATAR_COLORS[0];
+  
+  AVATAR_COLORS.forEach((color, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'setup-color' + (idx === 0 ? ' active' : '');
+    btn.style.backgroundColor = color;
+    btn.addEventListener('click', () => {
+      setupColorSelected = color;
+      document.querySelectorAll('.setup-color').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    colorsContainer.appendChild(btn);
+  });
+
+  const nameInput = $('setup-name');
+  const nameField = nameInput.closest('.setup-field');
+  
+  if (options.hasName) {
+    nameInput.value = options.name;
+    if (nameField) nameField.style.display = 'none';
+    $('setup-skip').style.display = 'none';
+  } else {
+    nameInput.value = '';
+    if (nameField) nameField.style.display = 'block';
+    $('setup-skip').style.display = 'block';
+  }
+
+  backdrop.classList.add('open');
+
+  const handleFinish = (name) => {
+    Profile.set({ name: name, color: setupColorSelected });
+    backdrop.classList.remove('open');
+    updateNavbarProfile();
+    toast('Profile set up completed!');
+    refreshUserRows();
+  };
+
+  $('setup-go').onclick = () => {
+    const name = nameInput.value.trim() || 'User';
+    handleFinish(name);
+  };
+  $('setup-skip').onclick = () => {
+    handleFinish('Guest');
+  };
+}
+
+function updateNavbarProfile() {
+  const profile = Profile.get();
+  if (profile) {
+    const btn = $('profile-btn');
+    btn.style.backgroundColor = profile.color;
+    btn.textContent = Profile.initial(profile.name);
+  }
+}
+
+function openProfileSidebar() {
+  const profile = Profile.get() || { name: 'Guest', color: AVATAR_COLORS[0] };
+  
+  $('sidebar-profile-area').innerHTML = `
+    <div class="sidebar-avatar" style="background-color: ${profile.color}">${Profile.initial(profile.name)}</div>
+    <div class="sidebar-info-meta">
+      <div class="sidebar-name">${esc(profile.name)}</div>
+      <div class="sidebar-joined">Joined ${new Date(profile.createdAt || Date.now()).toLocaleDateString('en-US', {month: 'short', year: 'numeric'})}</div>
+    </div>
+  `;
+  
+  $('sidebar-stats').innerHTML = `
+    <div class="sidebar-stat">
+      <div class="sidebar-stat-num">${History.count()}</div>
+      <div class="sidebar-stat-label">Watched</div>
+    </div>
+    <div class="sidebar-stat">
+      <div class="sidebar-stat-num">${Wishlist.count()}</div>
+      <div class="sidebar-stat-label">My List</div>
+    </div>
+    <div class="sidebar-stat">
+      <div class="sidebar-stat-num">${Progress.count()}</div>
+      <div class="sidebar-stat-label">Continue</div>
+    </div>
+  `;
+
+  $('sidebar-name-input').value = profile.name;
+
+  // Active color item
+  document.querySelectorAll('.sidebar-color').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.color === profile.color);
+  });
+
+  $('sidebar-backdrop').classList.add('open');
+}
+
+function closeProfileSidebar() {
+  $('sidebar-backdrop').classList.remove('open');
+}
+
+/* ─── CLOUD DB & AUTH MODAL WIRING ─── */
+function openDbConfigModal() {
+  $('db-url-input').value = localStorage.getItem('gedatv_supabase_url') || '';
+  $('db-key-input').value = localStorage.getItem('gedatv_supabase_key') || '';
+  $('db-config-backdrop').classList.add('open');
+}
+
+function closeDbConfigModal() {
+  $('db-config-backdrop').classList.remove('open');
+}
+
+let isAuthRegisterState = false;
+
+function openAuthModal() {
+  isAuthRegisterState = false;
+  updateAuthModalState();
+  $('auth-error-msg').style.display = 'none';
+  $('auth-username-input').value = '';
+  $('auth-password-input').value = '';
+  $('auth-name-input').value = '';
+  $('auth-backdrop').classList.add('open');
+}
+
+function closeAuthModal() {
+  $('auth-backdrop').classList.remove('open');
+}
+
+function updateAuthModalState() {
+  if (isAuthRegisterState) {
+    $('auth-title').textContent = 'Create Account';
+    $('auth-subtitle').textContent = 'Create your account first. We’ll ask for your profile next.';
+    $('auth-name-field').style.display = 'none';
+    $('auth-submit-btn').textContent = 'Create Account';
+    $('auth-toggle-label').textContent = 'Already have an account?';
+    $('auth-toggle-btn').textContent = 'Sign In';
+  } else {
+    $('auth-title').textContent = 'Sign In';
+    $('auth-subtitle').textContent = 'Log in to continue. New users should create an account first.';
+    $('auth-name-field').style.display = 'none';
+    $('auth-submit-btn').textContent = 'Sign In';
+    $('auth-toggle-label').textContent = 'Need an account?';
+    $('auth-toggle-btn').textContent = 'Create Account';
+  }
+}
+
+async function refreshUserSessionUI() {
+  if (!window.Cloud) return;
+  const isDbConnected = Cloud.isConnected();
+  const disconnectedArea = $('sidebar-db-disconnected');
+  const connectedGuestArea = $('sidebar-db-connected-guest');
+  const loggedInArea = $('sidebar-db-logged-in');
+  
+  if (!isDbConnected) {
+    disconnectedArea.style.display = 'block';
+    connectedGuestArea.style.display = 'none';
+    loggedInArea.style.display = 'none';
+  } else {
+    disconnectedArea.style.display = 'none';
+    const user = await Cloud.getCurrentUser();
+    if (user) {
+      connectedGuestArea.style.display = 'none';
+      loggedInArea.style.display = 'block';
+      $('sidebar-user-email').textContent = user.username ? `@${user.username}` : '';
+    } else {
+      connectedGuestArea.style.display = 'block';
+      loggedInArea.style.display = 'none';
+    }
+  }
+  
+  updateNavbarProfile();
+  refreshUserRows();
+}
+
+function initProfileSystem() {
+  const profile = Profile.get();
+  if (profile) updateNavbarProfile();
+  
+  // Re-read Cloud client config and update session state
+  if (window.Cloud) {
+    Cloud.init();
+    refreshUserSessionUI();
+    void (async () => {
+      const user = await Cloud.getCurrentUser();
+      if (user) {
+        if (!Profile.exists()) openSetupModal();
+      } else {
+        openAuthModal();
+      }
+    })();
+  } else if (!profile) {
+    openSetupModal();
+  }
+  
+  const nameInput = $('sidebar-name-input');
+  if (profile) nameInput.value = profile.name;
+  
+  $('sidebar-save-name').addEventListener('click', () => {
+    const val = nameInput.value.trim();
+    if (val) {
+      Profile.set({ name: val });
+      toast('Profile name updated!');
+      updateNavbarProfile();
+      openProfileSidebar(); // refresh sidebar content
+    }
+  });
+
+  const colorsContainer = $('sidebar-colors');
+  colorsContainer.innerHTML = '';
+  AVATAR_COLORS.forEach(color => {
+    const btn = document.createElement('button');
+    btn.className = 'sidebar-color' + (profile && profile.color === color ? ' active' : '');
+    btn.dataset.color = color;
+    btn.style.backgroundColor = color;
+    btn.addEventListener('click', () => {
+      Profile.set({ color });
+      document.querySelectorAll('.sidebar-color').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateNavbarProfile();
+      openProfileSidebar(); // refresh sidebar avatar
+      toast('Avatar color updated!');
+    });
+    colorsContainer.appendChild(btn);
+  });
+
+  $('sidebar-goto-history').addEventListener('click', () => {
+    closeProfileSidebar();
+    scrollToSection('history');
+  });
+  $('sidebar-goto-wishlist').addEventListener('click', () => {
+    closeProfileSidebar();
+    scrollToSection('wishlist');
+  });
+  $('sidebar-goto-continue').addEventListener('click', () => {
+    closeProfileSidebar();
+    scrollToSection('continue');
+  });
+
+  /* DB Config Buttons */
+  $('sidebar-connect-db-btn').addEventListener('click', openDbConfigModal);
+  $('sidebar-db-settings-btn').addEventListener('click', openDbConfigModal);
+  $('db-cancel-btn').addEventListener('click', closeDbConfigModal);
+  $('db-config-backdrop').addEventListener('click', (e) => {
+    if (e.target === $('db-config-backdrop')) closeDbConfigModal();
+  });
+  
+  $('db-save-btn').addEventListener('click', () => {
+    const url = $('db-url-input').value.trim();
+    const key = $('db-key-input').value.trim();
+    
+    if (!url || !key) {
+      toast("Both URL and Anon Key are required!");
+      return;
+    }
+    
+    localStorage.setItem('gedatv_supabase_url', url);
+    localStorage.setItem('gedatv_supabase_key', key);
+    
+    const success = Cloud.init();
+    if (success) {
+      toast("Database connected successfully!");
+      closeDbConfigModal();
+      refreshUserSessionUI();
+    } else {
+      toast("Failed to initialize database client. Check settings.");
+    }
+  });
+
+  /* Auth Actions & Modals */
+  $('sidebar-login-btn').addEventListener('click', openAuthModal);
+  $('auth-close-btn').addEventListener('click', closeAuthModal);
+  $('auth-backdrop').addEventListener('click', (e) => {
+    if (e.target === $('auth-backdrop')) closeAuthModal();
+  });
+  
+  $('auth-toggle-btn').addEventListener('click', () => {
+    isAuthRegisterState = !isAuthRegisterState;
+    updateAuthModalState();
+  });
+
+  $('auth-submit-btn').addEventListener('click', async () => {
+    const username = $('auth-username-input').value.trim();
+    const password = $('auth-password-input').value.trim();
+    const errorMsg = $('auth-error-msg');
+    
+    errorMsg.style.display = 'none';
+    
+    if (!username || !password) {
+      errorMsg.textContent = 'Please fill out username and password.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+      errorMsg.textContent = 'Use a username with 3-30 letters, numbers, dots, underscores, or dashes.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (password.length < 6) {
+      errorMsg.textContent = 'Password must be at least 6 characters.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    
+    const origText = $('auth-submit-btn').textContent;
+    $('auth-submit-btn').disabled = true;
+    $('auth-submit-btn').textContent = 'Processing...';
+    
+    try {
+      if (isAuthRegisterState) {
+        await Cloud.register(username, password);
+        toast('Account created successfully!');
+      } else {
+        await Cloud.login(username, password);
+        toast('Logged in successfully!');
+      }
+      closeAuthModal();
+      closeProfileSidebar();
+      await refreshUserSessionUI();
+      if (!Profile.exists()) {
+        openSetupModal();
+      }
+    } catch (err) {
+      errorMsg.textContent = err.message || 'Authentication error. Please check credentials.';
+      errorMsg.style.display = 'block';
+    } finally {
+      $('auth-submit-btn').disabled = false;
+      $('auth-submit-btn').textContent = origText;
+    }
+  });
+
+  $('sidebar-logout-btn').addEventListener('click', async () => {
+    if (confirm("Are you sure you want to sign out? Your cloud data will remain saved, but this device's sync will be disconnected.")) {
+      await Cloud.logout();
+      closeProfileSidebar();
+      toast("Signed out successfully.");
+      await refreshUserSessionUI();
+      openAuthModal();
+    }
+  });
+
+  $('sidebar-clear-data').addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all profile data, watchlist, history, and progress?')) {
+      Profile.clear();
+      History.clear();
+      Wishlist.clear();
+      Progress.clear();
+      
+      closeProfileSidebar();
+      toast('All data cleared!');
+      
+      refreshUserRows();
+      openSetupModal();
+    }
+  });
+
+  $('profile-btn').addEventListener('click', openProfileSidebar);
+  $('sidebar-close').addEventListener('click', closeProfileSidebar);
+  $('sidebar-backdrop').addEventListener('click', (e) => {
+    if (e.target === $('sidebar-backdrop')) closeProfileSidebar();
+  });
+}
+
+function refreshUserRows() {
+  // 1. Continue Watching Row
+  const progressItems = Progress.getAll();
+  const cwContainer = $('continue-row-container');
+  cwContainer.innerHTML = '';
+  if (progressItems.length > 0) {
+    const row = document.createElement('section');
+    row.className = 'row';
+    row.dataset.anchor = 'continue';
+    row.innerHTML = `
+      <div class="row-head">
+        <h2 class="row-title">Continue Watching</h2>
+      </div>
+      <div class="scroller-wrap">
+        <button class="arrow left" aria-label="Scroll left"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="scroller"></div>
+        <button class="arrow right" aria-label="Scroll right"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>`;
+    const scroller = row.querySelector('.scroller');
+    progressItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'cw-card';
+      const imgSrc = poster(item.poster_path, 'w342');
+      const epLabel = item.type === 'tv' ? `S${item.season} E${item.episode}` : 'Movie';
+      const progressPercent = Math.round((item.progress || 0) * 100);
+      
+      card.innerHTML = `
+        ${imgSrc 
+          ? `<img class="cw-thumb" src="${imgSrc}" alt="${esc(item.title)}" loading="lazy">` 
+          : `<div class="cw-thumb-placeholder">🎬</div>`}
+        <button class="cw-remove" title="Remove from Continue Watching">✕</button>
+        <div class="cw-progress">
+          <div class="cw-progress-bar" style="width: ${progressPercent}%"></div>
+        </div>
+        <div class="cw-overlay">
+          <div class="cw-play-icon">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="cw-title">${esc(item.title)}</div>
+          <div class="cw-ep">${epLabel}</div>
+        </div>`;
+        
+      card.addEventListener('click', () => {
+        const secs = progressToSeconds(item.progress, item.type);
+        window.location.href = playerUrl(
+          { id: item.id, media_type: item.type },
+          item.season,
+          item.episode,
+          { server: item.server, timestamp: secs }
+        );
+      });
+      
+      card.querySelector('.cw-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        Progress.remove(item.id, item.type);
+        toast(`Removed from Continue Watching`);
+        refreshUserRows();
+      });
+      
+      scroller.appendChild(card);
+    });
+    
+    const step = () => Math.max(scroller.clientWidth * 0.82, 320);
+    row.querySelector('.arrow.left').addEventListener('click', () => scroller.scrollBy({ left: -step(), behavior: 'smooth' }));
+    row.querySelector('.arrow.right').addEventListener('click', () => scroller.scrollBy({ left:  step(), behavior: 'smooth' }));
+    
+    cwContainer.appendChild(row);
+  }
+
+  // 2. Wishlist ("My List") Row
+  const wishlistItems = Wishlist.getAll();
+  const wishlistContainer = $('wishlist-row-container');
+  wishlistContainer.innerHTML = '';
+  if (wishlistItems.length > 0) {
+    const row = document.createElement('section');
+    row.className = 'row';
+    row.dataset.anchor = 'wishlist';
+    row.innerHTML = `
+      <div class="row-head">
+        <h2 class="row-title">My List</h2>
+      </div>
+      <div class="scroller-wrap">
+        <button class="arrow left" aria-label="Scroll left"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="scroller"></div>
+        <button class="arrow right" aria-label="Scroll right"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>`;
+    const scroller = row.querySelector('.scroller');
+    wishlistItems.forEach(item => {
+      scroller.appendChild(makeCard(item, { noRefresh: true }));
+    });
+    const step = () => Math.max(scroller.clientWidth * 0.82, 320);
+    row.querySelector('.arrow.left').addEventListener('click', () => scroller.scrollBy({ left: -step(), behavior: 'smooth' }));
+    row.querySelector('.arrow.right').addEventListener('click', () => scroller.scrollBy({ left:  step(), behavior: 'smooth' }));
+    
+    wishlistContainer.appendChild(row);
+  }
+
+  // 3. Recently Watched ("History") Row
+  const historyItems = History.getAll();
+  const historyContainer = $('history-row-container');
+  historyContainer.innerHTML = '';
+  if (historyItems.length > 0) {
+    const row = document.createElement('section');
+    row.className = 'row';
+    row.dataset.anchor = 'history';
+    row.innerHTML = `
+      <div class="row-head">
+        <h2 class="row-title">Recently Watched</h2>
+      </div>
+      <div class="scroller-wrap">
+        <button class="arrow left" aria-label="Scroll left"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="scroller"></div>
+        <button class="arrow right" aria-label="Scroll right"><svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>`;
+    const scroller = row.querySelector('.scroller');
+    historyItems.forEach(item => {
+      scroller.appendChild(makeCard(item, { noRefresh: true }));
+    });
+    const step = () => Math.max(scroller.clientWidth * 0.82, 320);
+    row.querySelector('.arrow.left').addEventListener('click', () => scroller.scrollBy({ left: -step(), behavior: 'smooth' }));
+    row.querySelector('.arrow.right').addEventListener('click', () => scroller.scrollBy({ left:  step(), behavior: 'smooth' }));
+    
+    historyContainer.appendChild(row);
+  }
+}
+
 /* ─── INIT ─── */
 (async function init() {
   loadGenres();
+  initProfileSystem();
+  refreshUserRows();
   await loadHero();
   loadTop10();
   for (const cfg of CATEGORY_ROWS) loadRow(cfg);
@@ -1535,12 +2805,30 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
   }
 
   function getSections() {
+    // Setup modal open → trap focus inside it
+    if ($('setup-backdrop').classList.contains('open')) {
+      const colors = [...$('setup-colors').querySelectorAll('.setup-color')].filter(vis);
+      const s = [];
+      s.push({ key: null, items: [$('setup-name')].filter(vis) });
+      if (colors.length) s.push({ key: null, items: colors });
+      s.push({ key: null, items: [$('setup-go'), $('setup-skip')].filter(vis) });
+      return s;
+    }
+    // Profile sidebar open → trap focus inside it
+    if ($('sidebar-backdrop').classList.contains('open')) {
+      const colors = [...$('sidebar-colors').querySelectorAll('.sidebar-color')].filter(vis);
+      const s = [];
+      s.push({ key: null, items: [$('sidebar-close'), $('sidebar-name-input'), $('sidebar-save-name')].filter(vis) });
+      if (colors.length) s.push({ key: null, items: colors });
+      s.push({ key: null, items: [$('sidebar-goto-history'), $('sidebar-goto-wishlist'), $('sidebar-goto-continue'), $('sidebar-clear-data')].filter(vis) });
+      return s;
+    }
     // Modal open → trap focus inside it
     if ($('modal-backdrop').classList.contains('open')) {
       const s = [{ key: null, items: [$('modal-close')] }];
       if ($('tv-selectors').style.display !== 'none')
         s.push({ key: null, items: [$('season-select'), $('episode-select')] });
-      s.push({ key: null, items: [$('modal-watch-btn')] });
+      s.push({ key: null, items: [$('modal-watch-btn'), $('modal-wishlist-btn')].filter(vis) });
       return s;
     }
     // Server dropdown open → trap focus on its items (one per "section",
@@ -1549,7 +2837,7 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
       return [...serverMenu.querySelectorAll('.server-item')].map(i => ({ key: null, items: [i] }));
 
     const secs = [];
-    const header = [...document.querySelectorAll('.nav-link'), searchInput, serverBtn].filter(vis);
+    const header = [...document.querySelectorAll('.nav-link'), searchInput, $('profile-btn'), serverBtn].filter(vis);
     if (header.length) secs.push({ key: 'header', items: header });
 
     if ($('search-results-section').classList.contains('visible')) {
@@ -1569,7 +2857,7 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
     document.querySelectorAll('#rows-container .scroller').forEach(sc => {
       const items = [...sc.children]
         .map(c => c.classList.contains('rank-card') ? c.querySelector('.card') : c)
-        .filter(c => c && c.classList.contains('card'));
+        .filter(c => c && (c.classList.contains('card') || c.classList.contains('cw-card')));
       if (items.length) secs.push({ key: sc, items });
     });
     return secs;
