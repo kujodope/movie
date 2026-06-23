@@ -1,19 +1,14 @@
 // GedaTv Supabase Cloud Database & Auth Integration Layer
 (function() {
   let supabase = null;
-
-  function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-  }
+  let syncTimeout = null;
 
   const DEFAULT_URL = "https://legcqcbgrveypwgfsmaf.supabase.co";
   const DEFAULT_KEY = "sb_publishable_CCgGgqrboF9q29is1VCUgw_jatWsNgI";
   const AUTH_USERS_KEY = 'gedatv_accounts_local';
   const AUTH_SESSION_KEY = 'gedatv_auth_session';
+  const USER_DATA_PREFIX = 'gedatv_userdata_';
+  const DATA_KEYS = ['gedatv_profile', 'gedatv_wishlist', 'gedatv_history', 'gedatv_progress'];
 
   function normalizeUsername(username) {
     return String(username || '').trim().toLowerCase();
@@ -78,6 +73,104 @@
     return normalized;
   }
 
+  function getUserDataStorageKey(username) {
+    return USER_DATA_PREFIX + normalizeUsername(username);
+  }
+
+  function readBundleFromActiveKeys() {
+    const bundle = {};
+    for (const key of DATA_KEYS) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        bundle[key] = JSON.parse(raw);
+      } catch {
+        bundle[key] = raw;
+      }
+    }
+    return bundle;
+  }
+
+  function persistAccountProfile(username) {
+    const target = normalizeUsername(username);
+    if (!target) return;
+    let profile = null;
+    try {
+      profile = JSON.parse(localStorage.getItem('gedatv_profile') || 'null');
+    } catch {
+      profile = null;
+    }
+    if (!profile?.name) return;
+    const accounts = getStoredAccounts();
+    const idx = accounts.findIndex((account) => account.username === target);
+    if (idx < 0) return;
+    accounts[idx].profile = { name: profile.name, color: profile.color };
+    saveStoredAccounts(accounts);
+  }
+
+  function snapshotActiveUserData(username) {
+    const target = normalizeUsername(username || getSessionUsername());
+    if (!target) return;
+    const bundle = readBundleFromActiveKeys();
+    localStorage.setItem(getUserDataStorageKey(target), JSON.stringify(bundle));
+    persistAccountProfile(target);
+  }
+
+  function restoreUserDataFromLocal(username) {
+    const raw = localStorage.getItem(getUserDataStorageKey(username));
+    if (!raw) return false;
+    try {
+      const bundle = JSON.parse(raw);
+      for (const key of DATA_KEYS) {
+        if (bundle[key] !== undefined && bundle[key] !== null) {
+          localStorage.setItem(key, JSON.stringify(bundle[key]));
+        } else {
+          localStorage.removeItem(key);
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function restoreProfileFromAccount(username) {
+    const row = getAccountRow(username);
+    if (!row?.profile?.name) return false;
+    let existing = null;
+    try {
+      existing = JSON.parse(localStorage.getItem('gedatv_profile') || 'null');
+    } catch {
+      existing = null;
+    }
+    if (existing?.name) return false;
+    const profile = {
+      name: row.profile.name,
+      color: row.profile.color || '#e50914',
+      createdAt: existing?.createdAt || new Date().toISOString(),
+    };
+    localStorage.setItem('gedatv_profile', JSON.stringify(profile));
+    return true;
+  }
+
+  function clearActiveUserData() {
+    for (const key of DATA_KEYS) {
+      localStorage.removeItem(key);
+    }
+  }
+
+  function hasMeaningfulProfile(profile) {
+    return profile && typeof profile === 'object' && !!profile.name;
+  }
+
+  function hasMeaningfulList(list) {
+    return Array.isArray(list) && list.length > 0;
+  }
+
+  function hasMeaningfulProgress(progress) {
+    return progress && typeof progress === 'object' && Object.keys(progress).length > 0;
+  }
+
   function initSupabase() {
     const url = localStorage.getItem('gedatv_supabase_url') || DEFAULT_URL;
     const key = localStorage.getItem('gedatv_supabase_key') || DEFAULT_KEY;
@@ -93,11 +186,13 @@
   }
 
   async function uploadUserData() {
+    const username = getSessionUsername();
+    if (!username) return;
+
+    snapshotActiveUserData(username);
     if (!supabase) return;
+
     try {
-      const username = getSessionUsername();
-      if (!username) return;
-      
       const localProfile = JSON.parse(localStorage.getItem('gedatv_profile') || '{}');
       const wishlist = JSON.parse(localStorage.getItem('gedatv_wishlist') || '[]');
       const history = JSON.parse(localStorage.getItem('gedatv_history') || '[]');
@@ -118,6 +213,36 @@
     }
   }
 
+  async function syncNow() {
+    if (syncTimeout) {
+      clearTimeout(syncTimeout);
+      syncTimeout = null;
+    }
+    await uploadUserData();
+  }
+
+  async function restoreSessionData(username, { forceReload = false } = {}) {
+    const normalized = normalizeUsername(username);
+    if (!normalized) return;
+
+    const activeBundle = readBundleFromActiveKeys();
+    const hasActiveData = Object.keys(activeBundle).length > 0;
+
+    if (forceReload || !hasActiveData) {
+      if (hasActiveData) snapshotActiveUserData(normalized);
+      clearActiveUserData();
+      restoreUserDataFromLocal(normalized);
+    }
+
+    restoreProfileFromAccount(normalized);
+
+    if (supabase) {
+      await downloadUserData();
+    }
+
+    snapshotActiveUserData(normalized);
+  }
+
   async function downloadUserData() {
     if (!supabase) return null;
     try {
@@ -136,10 +261,19 @@
       }
       
       if (data) {
-        if (data.profile) localStorage.setItem('gedatv_profile', JSON.stringify(data.profile));
-        if (data.wishlist) localStorage.setItem('gedatv_wishlist', JSON.stringify(data.wishlist));
-        if (data.history) localStorage.setItem('gedatv_history', JSON.stringify(data.history));
-        if (data.progress) localStorage.setItem('gedatv_progress', JSON.stringify(data.progress));
+        if (hasMeaningfulProfile(data.profile)) {
+          localStorage.setItem('gedatv_profile', JSON.stringify(data.profile));
+        }
+        if (hasMeaningfulList(data.wishlist)) {
+          localStorage.setItem('gedatv_wishlist', JSON.stringify(data.wishlist));
+        }
+        if (hasMeaningfulList(data.history)) {
+          localStorage.setItem('gedatv_history', JSON.stringify(data.history));
+        }
+        if (hasMeaningfulProgress(data.progress)) {
+          localStorage.setItem('gedatv_progress', JSON.stringify(data.progress));
+        }
+        snapshotActiveUserData(username);
         return data;
       }
     } catch (err) {
@@ -181,7 +315,7 @@
       saveStoredAccounts(accounts);
 
       setAuthSession(normalized);
-      if (supabase) await uploadUserData();
+      await restoreSessionData(normalized, { forceReload: true });
       return { username: normalized };
     },
     
@@ -194,25 +328,35 @@
       if (row.password_hash !== password_hash) throw new Error('Invalid username or password');
 
       setAuthSession(normalized);
-      if (supabase) await downloadUserData();
+      await restoreSessionData(normalized, { forceReload: true });
       return { username: normalized };
     },
     
     async logout() {
+      await syncNow();
+      snapshotActiveUserData();
       clearAuthSession();
-      localStorage.removeItem('gedatv_profile');
-      localStorage.removeItem('gedatv_wishlist');
-      localStorage.removeItem('gedatv_history');
-      localStorage.removeItem('gedatv_progress');
+      clearActiveUserData();
     },
     
-    sync: debounce(async () => {
-      await uploadUserData();
-    }, 1200),
+    sync() {
+      if (syncTimeout) clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(async () => {
+        syncTimeout = null;
+        await uploadUserData();
+      }, 1200);
+    },
+
+    syncNow,
 
     pull: async () => {
-      return await downloadUserData();
-    }
+      const username = getSessionUsername();
+      if (!username) return null;
+      await restoreSessionData(username);
+      return readBundleFromActiveKeys();
+    },
+
+    restoreSession: restoreSessionData,
   };
 
   // Run initial configuration checks on load

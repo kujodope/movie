@@ -2442,18 +2442,23 @@ async function refreshUserSessionUI() {
 }
 
 function initProfileSystem() {
-  const profile = Profile.get();
+  let profile = Profile.get();
   if (profile) updateNavbarProfile();
   
-  // Re-read Cloud client config and update session state
+  // Re-read Cloud client config and restore saved data for active session
   if (window.Cloud) {
     Cloud.init();
-    refreshUserSessionUI();
     void (async () => {
       const user = await Cloud.getCurrentUser();
       if (user) {
+        await Cloud.restoreSession(user.username);
+        profile = Profile.get();
+        updateNavbarProfile();
+        refreshUserRows();
+        await refreshUserSessionUI();
         if (!Profile.exists()) openSetupModal();
       } else {
+        await refreshUserSessionUI();
         openAuthModal();
       }
     })();
@@ -2584,6 +2589,8 @@ function initProfileSystem() {
       }
       closeAuthModal();
       closeProfileSidebar();
+      updateNavbarProfile();
+      refreshUserRows();
       await refreshUserSessionUI();
       if (!Profile.exists()) {
         openSetupModal();
@@ -2598,7 +2605,7 @@ function initProfileSystem() {
   });
 
   $('sidebar-logout-btn').addEventListener('click', async () => {
-    if (confirm("Are you sure you want to sign out? Your cloud data will remain saved, but this device's sync will be disconnected.")) {
+    if (confirm("Are you sure you want to sign out? Your wishlist, history, and profile will be saved for next time you sign in.")) {
       await Cloud.logout();
       closeProfileSidebar();
       toast("Signed out successfully.");
