@@ -108,6 +108,50 @@
     saveStoredAccounts(accounts);
   }
 
+  // ── Cloud account helpers (stored inside profile JSONB — no schema change) ──
+  async function uploadAccountCredentials(username) {
+    if (!supabase) return;
+    const account = getAccountRow(username);
+    if (!account?.password_hash) return;
+    try {
+      const { data, error } = await supabase
+        .from('gedatv_sync')
+        .select('profile')
+        .eq('id', username)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') return;
+      const cloudProfile = (data?.profile) || {};
+      cloudProfile._password_hash = account.password_hash;
+      await supabase.from('gedatv_sync').upsert({
+        id: username,
+        profile: cloudProfile,
+        updated_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('[GedaTv] Could not upload account credentials:', err);
+    }
+  }
+
+  async function downloadAccountCredentials(username) {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase
+        .from('gedatv_sync')
+        .select('id, profile')
+        .eq('id', username)
+        .maybeSingle();
+      if (error || !data?.profile?._password_hash) return null;
+      return {
+        username: data.id,
+        password_hash: data.profile._password_hash,
+        profile: (() => { const p = { ...data.profile }; delete p._password_hash; return p; })(),
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+  // ── end cloud account helpers ──
+
   function snapshotActiveUserData(username) {
     const target = normalizeUsername(username || getSessionUsername());
     if (!target) return;
@@ -195,7 +239,11 @@
       const history = JSON.parse(localStorage.getItem('gedatv_history') || '[]');
       const progress = JSON.parse(localStorage.getItem('gedatv_progress') || '{}');
 
-      const profile = Object.keys(localProfile).length ? localProfile : {};
+      const profile = { ...(Object.keys(localProfile).length ? localProfile : {}) };
+      // Embed password hash in profile for cross-browser auth
+      const account = getAccountRow(username);
+      if (account?.password_hash) profile._password_hash = account.password_hash;
+
       const { error } = await supabase.from('gedatv_sync').upsert({
         id: username,
         profile,
@@ -245,21 +293,36 @@
     try {
       const username = getSessionUsername();
       if (!username) return null;
-      
+
       const { data, error } = await supabase
         .from('gedatv_sync')
         .select('*')
         .eq('id', username)
         .maybeSingle();
-        
+
       if (error) {
         console.error("[GedaTv Sync] Cloud download error:", error);
         return null;
       }
-      
+
       if (data) {
-        if (hasMeaningfulProfile(data.profile)) {
-          localStorage.setItem('gedatv_profile', JSON.stringify(data.profile));
+        // Extract password hash from profile and cache the account locally
+        const passwordHash = data.profile?._password_hash || null;
+        const cleanProfile = data.profile ? { ...data.profile } : null;
+        if (cleanProfile) delete cleanProfile._password_hash;
+
+        if (passwordHash && !getAccountRow(username)) {
+          const accounts = getStoredAccounts();
+          accounts.push({
+            username,
+            password_hash: passwordHash,
+            profile: cleanProfile ? { name: cleanProfile.name, color: cleanProfile.color } : { name: username },
+          });
+          saveStoredAccounts(accounts);
+        }
+
+        if (hasMeaningfulProfile(cleanProfile)) {
+          localStorage.setItem('gedatv_profile', JSON.stringify(cleanProfile));
         }
         if (hasMeaningfulList(data.wishlist)) {
           localStorage.setItem('gedatv_wishlist', JSON.stringify(data.wishlist));
@@ -313,12 +376,29 @@
 
       setAuthSession(normalized);
       await restoreSessionData(normalized, { forceReload: true });
+      uploadAccountCredentials(normalized); // push to cloud for cross-browser
       return { username: normalized };
     },
     
     async login(username, password) {
       const normalized = usernameToKey(username);
-      const row = await getAccountRow(normalized);
+      let row = getAccountRow(normalized);
+
+      // Not found locally → try cloud (cross-browser support)
+      if (!row) {
+        const cloud = await downloadAccountCredentials(normalized);
+        if (cloud) {
+          const accounts = getStoredAccounts();
+          accounts.push({
+            username: normalized,
+            password_hash: cloud.password_hash,
+            profile: cloud.profile ? { name: cloud.profile.name, color: cloud.profile.color } : { name: normalized },
+          });
+          saveStoredAccounts(accounts);
+          row = { username: normalized, password_hash: cloud.password_hash };
+        }
+      }
+
       if (!row) throw new Error('Invalid username or password');
 
       const password_hash = await hashPassword(password);
