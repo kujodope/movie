@@ -2,32 +2,39 @@
 (function() {
   let supabase = null;
   let syncTimeout = null;
+  let authSubscription = null;
 
   const SUPABASE_URL = 'https://legcqcbgrveypwgfsmaf.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_CCgGgqrboF9q29is1VCUgw_jatWsNgI';
-  const AUTH_USERS_KEY = 'gedatv_accounts_local';
   const AUTH_SESSION_KEY = 'gedatv_auth_session';
   const USER_DATA_PREFIX = 'gedatv_userdata_';
   const DATA_KEYS = ['gedatv_profile', 'gedatv_wishlist', 'gedatv_history', 'gedatv_progress'];
+  const DEFAULT_AVATAR_COLOR = '#e50914';
 
-  function normalizeUsername(username) {
-    return String(username || '').trim().toLowerCase();
+  function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
   }
 
-  function getAuthSession() {
+  function readJson(key, fallback) {
     try {
-      const raw = localStorage.getItem(AUTH_SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
     } catch {
-      return null;
+      return fallback;
     }
   }
 
-  function setAuthSession(username) {
+  function writeAuthSession(user) {
+    if (!user?.id) {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      return null;
+    }
+
     const session = {
-      username: normalizeUsername(username),
-      token: `user-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      signedInAt: new Date().toISOString(),
+      id: user.id,
+      email: normalizeEmail(user.email),
+      profileName: user.user_metadata?.display_name || user.user_metadata?.name || '',
+      signedInAt: user.last_sign_in_at || new Date().toISOString(),
     };
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
     return session;
@@ -37,44 +44,20 @@
     localStorage.removeItem(AUTH_SESSION_KEY);
   }
 
-  function getSessionUsername() {
-    return normalizeUsername(getAuthSession()?.username || '');
+  function getSessionIdentity() {
+    const session = readJson(AUTH_SESSION_KEY, null);
+    return session?.id ? session : null;
   }
 
-  function getStoredAccounts() {
-    try {
-      const raw = localStorage.getItem(AUTH_USERS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveStoredAccounts(accounts) {
-    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(accounts));
-  }
-
-  async function hashPassword(password) {
-    const bytes = new TextEncoder().encode(String(password || ''));
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
-    return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, '0')).join('');
-  }
-
-  function getAccountRow(username) {
-    const normalized = normalizeUsername(username);
-    if (!normalized) return null;
-    return getStoredAccounts().find((account) => account.username === normalized) || null;
-  }
-
-  function usernameToKey(username) {
-    const normalized = normalizeUsername(username);
-    if (!normalized) throw new Error('Username is required');
+  function requireEmail(email) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) throw new Error('Email is required');
     return normalized;
   }
 
-  function getUserDataStorageKey(username) {
-    return USER_DATA_PREFIX + normalizeUsername(username);
+  function getUserDataStorageKey(userId) {
+    if (!userId) throw new Error('User id is required');
+    return USER_DATA_PREFIX + userId;
   }
 
   function readBundleFromActiveKeys() {
@@ -91,109 +74,23 @@
     return bundle;
   }
 
-  function persistAccountProfile(username) {
-    const target = normalizeUsername(username);
-    if (!target) return;
-    let profile = null;
-    try {
-      profile = JSON.parse(localStorage.getItem('gedatv_profile') || 'null');
-    } catch {
-      profile = null;
-    }
-    if (!profile?.name) return;
-    const accounts = getStoredAccounts();
-    const idx = accounts.findIndex((account) => account.username === target);
-    if (idx < 0) return;
-    accounts[idx].profile = { name: profile.name, color: profile.color };
-    saveStoredAccounts(accounts);
+  function snapshotActiveUserData(userId = getSessionIdentity()?.id) {
+    if (!userId) return;
+    localStorage.setItem(getUserDataStorageKey(userId), JSON.stringify(readBundleFromActiveKeys()));
   }
 
-  // ── Cloud account helpers (stored inside profile JSONB — no schema change) ──
-  async function uploadAccountCredentials(username) {
-    if (!supabase) return;
-    const account = getAccountRow(username);
-    if (!account?.password_hash) return;
-    try {
-      const { data, error } = await supabase
-        .from('gedatv_sync')
-        .select('profile')
-        .eq('id', username)
-        .maybeSingle();
-      if (error && error.code !== 'PGRST116') return;
-      const cloudProfile = (data?.profile) || {};
-      cloudProfile._password_hash = account.password_hash;
-      await supabase.from('gedatv_sync').upsert({
-        id: username,
-        profile: cloudProfile,
-        updated_at: new Date().toISOString()
-      });
-    } catch (err) {
-      console.warn('[GedaTv] Could not upload account credentials:', err);
-    }
-  }
+  function restoreUserDataFromLocal(userId) {
+    if (!userId) return false;
+    const bundle = readJson(getUserDataStorageKey(userId), null);
+    if (!bundle || typeof bundle !== 'object') return false;
 
-  async function downloadAccountCredentials(username) {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase
-        .from('gedatv_sync')
-        .select('id, profile')
-        .eq('id', username)
-        .maybeSingle();
-      if (error || !data?.profile?._password_hash) return null;
-      return {
-        username: data.id,
-        password_hash: data.profile._password_hash,
-        profile: (() => { const p = { ...data.profile }; delete p._password_hash; return p; })(),
-      };
-    } catch (err) {
-      return null;
-    }
-  }
-  // ── end cloud account helpers ──
-
-  function snapshotActiveUserData(username) {
-    const target = normalizeUsername(username || getSessionUsername());
-    if (!target) return;
-    const bundle = readBundleFromActiveKeys();
-    localStorage.setItem(getUserDataStorageKey(target), JSON.stringify(bundle));
-    persistAccountProfile(target);
-  }
-
-  function restoreUserDataFromLocal(username) {
-    const raw = localStorage.getItem(getUserDataStorageKey(username));
-    if (!raw) return false;
-    try {
-      const bundle = JSON.parse(raw);
-      for (const key of DATA_KEYS) {
-        if (bundle[key] !== undefined && bundle[key] !== null) {
-          localStorage.setItem(key, JSON.stringify(bundle[key]));
-        } else {
-          localStorage.removeItem(key);
-        }
+    for (const key of DATA_KEYS) {
+      if (bundle[key] !== undefined && bundle[key] !== null) {
+        localStorage.setItem(key, JSON.stringify(bundle[key]));
+      } else {
+        localStorage.removeItem(key);
       }
-      return true;
-    } catch {
-      return false;
     }
-  }
-
-  function restoreProfileFromAccount(username) {
-    const row = getAccountRow(username);
-    if (!row?.profile?.name) return false;
-    let existing = null;
-    try {
-      existing = JSON.parse(localStorage.getItem('gedatv_profile') || 'null');
-    } catch {
-      existing = null;
-    }
-    if (existing?.name) return false;
-    const profile = {
-      name: row.profile.name,
-      color: row.profile.color || '#e50914',
-      createdAt: existing?.createdAt || new Date().toISOString(),
-    };
-    localStorage.setItem('gedatv_profile', JSON.stringify(profile));
     return true;
   }
 
@@ -203,58 +100,160 @@
     }
   }
 
-  function hasMeaningfulProfile(profile) {
-    return profile && typeof profile === 'object' && !!profile.name;
+  function buildDefaultProfile(identity, existing = null) {
+    const fallbackName = identity?.profileName || (identity?.email ? identity.email.split('@')[0] : 'Guest') || 'Guest';
+    return {
+      ...(existing && typeof existing === 'object' ? existing : {}),
+      name: existing?.name || fallbackName,
+      color: existing?.color || DEFAULT_AVATAR_COLOR,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+    };
   }
 
-  function hasMeaningfulList(list) {
-    return Array.isArray(list) && list.length > 0;
+  function sanitizeCloudProfile(profile, identity) {
+    const safeProfile = profile && typeof profile === 'object' ? { ...profile } : {};
+    delete safeProfile._account_email;
+    delete safeProfile._account_name;
+    return buildDefaultProfile(identity, safeProfile);
   }
 
-  function hasMeaningfulProgress(progress) {
-    return progress && typeof progress === 'object' && Object.keys(progress).length > 0;
+  function ensureLocalDefaults(identity) {
+    const profile = readJson('gedatv_profile', null);
+    localStorage.setItem('gedatv_profile', JSON.stringify(buildDefaultProfile(identity, profile)));
+    localStorage.setItem('gedatv_wishlist', JSON.stringify(readJson('gedatv_wishlist', [])));
+    localStorage.setItem('gedatv_history', JSON.stringify(readJson('gedatv_history', [])));
+    localStorage.setItem('gedatv_progress', JSON.stringify(readJson('gedatv_progress', {})));
+  }
+
+  function applyCloudDataToActiveKeys(data, identity) {
+    localStorage.setItem('gedatv_profile', JSON.stringify(sanitizeCloudProfile(data?.profile, identity)));
+    localStorage.setItem('gedatv_wishlist', JSON.stringify(Array.isArray(data?.wishlist) ? data.wishlist : []));
+    localStorage.setItem('gedatv_history', JSON.stringify(Array.isArray(data?.history) ? data.history : []));
+    localStorage.setItem('gedatv_progress', JSON.stringify(data?.progress && typeof data.progress === 'object' ? data.progress : {}));
+  }
+
+  function mapUser(user) {
+    if (!user?.id) return null;
+    return {
+      id: user.id,
+      email: normalizeEmail(user.email),
+      username: normalizeEmail(user.email),
+      signedInAt: user.last_sign_in_at || new Date().toISOString(),
+      displayName: user.user_metadata?.display_name || user.user_metadata?.name || '',
+    };
+  }
+
+  function normalizeAuthError(error, { isSignup = false } = {}) {
+    const message = String(error?.message || '').trim();
+    const lower = message.toLowerCase();
+
+    if (!message) {
+      return isSignup ? 'Could not create your account right now.' : 'Could not sign you in right now.';
+    }
+    if (lower.includes('user already registered')) return 'An account with this email already exists.';
+    if (lower.includes('invalid login credentials')) return 'Invalid email or password.';
+    if (lower.includes('email not confirmed')) return 'Check your email and confirm your account before signing in.';
+    if (lower.includes('password should be at least')) return 'Password must be at least 6 characters.';
+    if (lower.includes('unable to validate email address')) return 'Enter a valid email address.';
+    return message;
+  }
+
+  async function getAuthUser() {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      const user = data.session?.user || null;
+      if (user) {
+        writeAuthSession(user);
+      } else {
+        clearAuthSession();
+      }
+      return user;
+    } catch (err) {
+      console.warn('[GedaTv] Could not read auth session:', err);
+      clearAuthSession();
+      return null;
+    }
   }
 
   function initSupabase() {
+    if (supabase) return true;
     if (!window.supabase) return false;
+
     try {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+      if (!authSubscription) {
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) {
+            writeAuthSession(session.user);
+          } else {
+            clearAuthSession();
+          }
+        });
+        authSubscription = data.subscription;
+      }
+
       return true;
-    } catch (e) {
-      console.error("Failed to initialize Supabase:", e);
+    } catch (err) {
+      console.error('Failed to initialize Supabase:', err);
       return false;
     }
   }
 
-  async function uploadUserData() {
-    const username = getSessionUsername();
-    if (!username) return;
-
-    snapshotActiveUserData(username);
-    if (!supabase) return;
+  async function fetchCloudUserData(userId) {
+    if (!supabase || !userId) return null;
 
     try {
-      const localProfile = JSON.parse(localStorage.getItem('gedatv_profile') || '{}');
-      const wishlist = JSON.parse(localStorage.getItem('gedatv_wishlist') || '[]');
-      const history = JSON.parse(localStorage.getItem('gedatv_history') || '[]');
-      const progress = JSON.parse(localStorage.getItem('gedatv_progress') || '{}');
+      const { data, error } = await supabase
+        .from('gedatv_sync')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-      const profile = { ...(Object.keys(localProfile).length ? localProfile : {}) };
-      // Embed password hash in profile for cross-browser auth
-      const account = getAccountRow(username);
-      if (account?.password_hash) profile._password_hash = account.password_hash;
+      if (error) {
+        console.error('[GedaTv Sync] Cloud download error:', error);
+        return null;
+      }
+
+      return data || null;
+    } catch (err) {
+      console.error('[GedaTv Sync] Error during download:', err);
+      return null;
+    }
+  }
+
+  async function uploadUserData() {
+    const identity = getSessionIdentity();
+    if (!identity?.id || !supabase) return;
+
+    snapshotActiveUserData(identity.id);
+
+    try {
+      const localProfile = readJson('gedatv_profile', {});
+      const wishlist = readJson('gedatv_wishlist', []);
+      const history = readJson('gedatv_history', []);
+      const progress = readJson('gedatv_progress', {});
+
+      const profile = {
+        ...buildDefaultProfile(identity, localProfile),
+        _account_email: identity.email,
+        _account_name: identity.profileName || buildDefaultProfile(identity, localProfile).name,
+      };
 
       const { error } = await supabase.from('gedatv_sync').upsert({
-        id: username,
+        id: identity.id,
         profile,
-        wishlist,
-        history,
-        progress,
-        updated_at: new Date().toISOString()
+        wishlist: Array.isArray(wishlist) ? wishlist : [],
+        history: Array.isArray(history) ? history : [],
+        progress: progress && typeof progress === 'object' ? progress : {},
+        updated_at: new Date().toISOString(),
       });
-      if (error) console.error("[GedaTv Sync] Cloud upload error:", error);
+
+      if (error) console.error('[GedaTv Sync] Cloud upload error:', error);
     } catch (err) {
-      console.error("[GedaTv Sync] Error fetching user for upload:", err);
+      console.error('[GedaTv Sync] Error during upload:', err);
     }
   }
 
@@ -266,80 +265,33 @@
     await uploadUserData();
   }
 
-  async function restoreSessionData(username, { forceReload = false } = {}) {
-    const normalized = normalizeUsername(username);
-    if (!normalized) return;
-
-    const activeBundle = readBundleFromActiveKeys();
-    const hasActiveData = Object.keys(activeBundle).length > 0;
-
-    if (forceReload || !hasActiveData) {
-      if (hasActiveData) snapshotActiveUserData(normalized);
+  async function restoreSessionData() {
+    const user = await getAuthUser();
+    if (!user) {
       clearActiveUserData();
-      restoreUserDataFromLocal(normalized);
+      return null;
     }
 
-    restoreProfileFromAccount(normalized);
+    const identity = getSessionIdentity();
+    if (!identity?.id) return null;
 
-    if (supabase) {
-      await downloadUserData();
+    clearActiveUserData();
+    const hadLocalBundle = restoreUserDataFromLocal(identity.id);
+    const cloudData = await fetchCloudUserData(identity.id);
+
+    if (cloudData) {
+      applyCloudDataToActiveKeys(cloudData, identity);
+    } else if (!hadLocalBundle) {
+      ensureLocalDefaults(identity);
     }
 
-    snapshotActiveUserData(normalized);
-  }
+    snapshotActiveUserData(identity.id);
 
-  async function downloadUserData() {
-    if (!supabase) return null;
-    try {
-      const username = getSessionUsername();
-      if (!username) return null;
-
-      const { data, error } = await supabase
-        .from('gedatv_sync')
-        .select('*')
-        .eq('id', username)
-        .maybeSingle();
-
-      if (error) {
-        console.error("[GedaTv Sync] Cloud download error:", error);
-        return null;
-      }
-
-      if (data) {
-        // Extract password hash from profile and cache the account locally
-        const passwordHash = data.profile?._password_hash || null;
-        const cleanProfile = data.profile ? { ...data.profile } : null;
-        if (cleanProfile) delete cleanProfile._password_hash;
-
-        if (passwordHash && !getAccountRow(username)) {
-          const accounts = getStoredAccounts();
-          accounts.push({
-            username,
-            password_hash: passwordHash,
-            profile: cleanProfile ? { name: cleanProfile.name, color: cleanProfile.color } : { name: username },
-          });
-          saveStoredAccounts(accounts);
-        }
-
-        if (hasMeaningfulProfile(cleanProfile)) {
-          localStorage.setItem('gedatv_profile', JSON.stringify(cleanProfile));
-        }
-        if (hasMeaningfulList(data.wishlist)) {
-          localStorage.setItem('gedatv_wishlist', JSON.stringify(data.wishlist));
-        }
-        if (hasMeaningfulList(data.history)) {
-          localStorage.setItem('gedatv_history', JSON.stringify(data.history));
-        }
-        if (hasMeaningfulProgress(data.progress)) {
-          localStorage.setItem('gedatv_progress', JSON.stringify(data.progress));
-        }
-        snapshotActiveUserData(username);
-        return data;
-      }
-    } catch (err) {
-      console.error("[GedaTv Sync] Error during download:", err);
+    if (!cloudData) {
+      await uploadUserData();
     }
-    return null;
+
+    return readBundleFromActiveKeys();
   }
 
   // Export globally as window.Cloud
@@ -347,75 +299,77 @@
     get client() { return supabase; },
     init() { return initSupabase(); },
     isConnected() { return !!supabase; },
-    
+
     async getCurrentUser() {
-      const session = getAuthSession();
-      if (!session?.username) return null;
-      return {
-        username: session.username,
-        token: session.token,
-        signedInAt: session.signedInAt,
-      };
+      const user = await getAuthUser();
+      return mapUser(user);
     },
-    
-    async register(username, password, profileName) {
-      const normalized = usernameToKey(username);
-      const password_hash = await hashPassword(password);
-      const existing = await getAccountRow(normalized);
-      if (existing) throw new Error('Username already exists');
 
-      const record = {
-        username: normalized,
-        password_hash,
-        profile: { name: profileName || normalized },
-      };
+    async register(email, password, profileName) {
+      const normalizedEmail = requireEmail(email);
+      const displayName = String(profileName || normalizedEmail.split('@')[0] || 'Guest').trim();
 
-      const accounts = getStoredAccounts();
-      accounts.push(record);
-      saveStoredAccounts(accounts);
+      if (!supabase && !initSupabase()) {
+        throw new Error('Authentication is unavailable right now.');
+      }
 
-      setAuthSession(normalized);
-      await restoreSessionData(normalized, { forceReload: true });
-      uploadAccountCredentials(normalized); // push to cloud for cross-browser
-      return { username: normalized };
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+          },
+        },
+      });
+
+      if (error) throw new Error(normalizeAuthError(error, { isSignup: true }));
+      if (!data?.user) throw new Error('Could not create your account right now.');
+
+      if (!data.session) {
+        throw new Error('Account created. Check your email to confirm it, then sign in.');
+      }
+
+      writeAuthSession(data.user);
+      await restoreSessionData();
+      await syncNow();
+      return mapUser(data.user);
     },
-    
-    async login(username, password) {
-      const normalized = usernameToKey(username);
-      let row = getAccountRow(normalized);
 
-      // Not found locally → try cloud (cross-browser support)
-      if (!row) {
-        const cloud = await downloadAccountCredentials(normalized);
-        if (cloud) {
-          const accounts = getStoredAccounts();
-          accounts.push({
-            username: normalized,
-            password_hash: cloud.password_hash,
-            profile: cloud.profile ? { name: cloud.profile.name, color: cloud.profile.color } : { name: normalized },
-          });
-          saveStoredAccounts(accounts);
-          row = { username: normalized, password_hash: cloud.password_hash };
+    async login(email, password) {
+      const normalizedEmail = requireEmail(email);
+
+      if (!supabase && !initSupabase()) {
+        throw new Error('Authentication is unavailable right now.');
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (error) throw new Error(normalizeAuthError(error));
+      if (!data?.user) throw new Error('Could not sign you in right now.');
+
+      writeAuthSession(data.user);
+      await restoreSessionData();
+      return mapUser(data.user);
+    },
+
+    async logout() {
+      await syncNow();
+
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          throw new Error(normalizeAuthError(error));
         }
       }
 
-      if (!row) throw new Error('Invalid username or password');
-
-      const password_hash = await hashPassword(password);
-      if (row.password_hash !== password_hash) throw new Error('Invalid username or password');
-
-      setAuthSession(normalized);
-      await restoreSessionData(normalized, { forceReload: true });
-      return { username: normalized };
-    },
-    
-    async logout() {
-      await syncNow();
-      snapshotActiveUserData();
       clearAuthSession();
       clearActiveUserData();
     },
-    
+
     sync() {
       if (syncTimeout) clearTimeout(syncTimeout);
       syncTimeout = setTimeout(async () => {
@@ -427,15 +381,12 @@
     syncNow,
 
     pull: async () => {
-      const username = getSessionUsername();
-      if (!username) return null;
-      await restoreSessionData(username);
+      await restoreSessionData();
       return readBundleFromActiveKeys();
     },
 
     restoreSession: restoreSessionData,
   };
 
-  // Run initial configuration checks on load
   initSupabase();
 })();

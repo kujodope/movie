@@ -1182,7 +1182,7 @@
     <button class="setup-skip" id="auth-close-btn" style="position: absolute; top: 1rem; right: 1.2rem; width: auto; padding: 0.4rem; background: none; border: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; height: auto;">✕</button>
     
     <div class="setup-logo" id="auth-title">Sign In</div>
-    <p class="setup-subtitle" id="auth-subtitle">Use your username to sign in or create a new account. Profile setup comes next.</p>
+    <p class="setup-subtitle" id="auth-subtitle">Use your email and password to sign in or create an account.</p>
     
     <div id="auth-error-msg" style="color: #ff6b6b; font-size: 0.85rem; padding: 0.6rem; border-radius: 6px; background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.25); margin-bottom: 1.2rem; display: none; text-align: left; line-height: 1.4;"></div>
     
@@ -1192,8 +1192,8 @@
     </div>
     
     <div class="setup-field" style="margin-top: 1rem;">
-      <label class="setup-label">Username</label>
-      <input class="setup-input" id="auth-username-input" type="text" placeholder="yourname" autocomplete="username" />
+      <label class="setup-label">Email</label>
+      <input class="setup-input" id="auth-username-input" type="email" placeholder="you@example.com" autocomplete="email" />
     </div>
     
     <div class="setup-field" style="margin-top: 1rem;">
@@ -2347,14 +2347,14 @@ function closeAuthModal() {
 function updateAuthModalState() {
   if (isAuthRegisterState) {
     $('auth-title').textContent = 'Create Account';
-    $('auth-subtitle').textContent = 'Create your account first. We’ll ask for your profile next.';
-    $('auth-name-field').style.display = 'none';
+    $('auth-subtitle').textContent = 'Create your account with your email and password.';
+    $('auth-name-field').style.display = 'block';
     $('auth-submit-btn').textContent = 'Create Account';
     $('auth-toggle-label').textContent = 'Already have an account?';
     $('auth-toggle-btn').textContent = 'Sign In';
   } else {
     $('auth-title').textContent = 'Sign In';
-    $('auth-subtitle').textContent = 'Log in to continue. New users should create an account first.';
+    $('auth-subtitle').textContent = 'Sign in with the email and password you used to create your account.';
     $('auth-name-field').style.display = 'none';
     $('auth-submit-btn').textContent = 'Sign In';
     $('auth-toggle-label').textContent = 'Need an account?';
@@ -2371,7 +2371,7 @@ async function refreshUserSessionUI() {
   if (user) {
     connectedGuestArea.style.display = 'none';
     loggedInArea.style.display = 'block';
-    $('sidebar-user-email').textContent = user.username ? `@${user.username}` : '';
+    $('sidebar-user-email').textContent = user.email || user.username || '';
   } else {
     connectedGuestArea.style.display = 'block';
     loggedInArea.style.display = 'none';
@@ -2391,7 +2391,7 @@ function initProfileSystem() {
     void (async () => {
       const user = await Cloud.getCurrentUser();
       if (user) {
-        await Cloud.restoreSession(user.username);
+        await Cloud.restoreSession();
         profile = Profile.get();
         updateNavbarProfile();
         refreshUserRows();
@@ -2463,24 +2463,30 @@ function initProfileSystem() {
   });
 
   $('auth-submit-btn').addEventListener('click', async () => {
-    const username = $('auth-username-input').value.trim();
+    const email = $('auth-username-input').value.trim();
     const password = $('auth-password-input').value.trim();
+    const profileName = $('auth-name-input').value.trim();
     const errorMsg = $('auth-error-msg');
     
     errorMsg.style.display = 'none';
     
-    if (!username || !password) {
-      errorMsg.textContent = 'Please fill out username and password.';
+    if (!email || !password) {
+      errorMsg.textContent = 'Please fill out your email and password.';
       errorMsg.style.display = 'block';
       return;
     }
-    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
-      errorMsg.textContent = 'Use a username with 3-30 letters, numbers, dots, underscores, or dashes.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errorMsg.textContent = 'Enter a valid email address.';
       errorMsg.style.display = 'block';
       return;
     }
     if (password.length < 6) {
       errorMsg.textContent = 'Password must be at least 6 characters.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (isAuthRegisterState && profileName && profileName.length > 20) {
+      errorMsg.textContent = 'Display name must be 20 characters or less.';
       errorMsg.style.display = 'block';
       return;
     }
@@ -2491,10 +2497,10 @@ function initProfileSystem() {
     
     try {
       if (isAuthRegisterState) {
-        await Cloud.register(username, password);
+        await Cloud.register(email, password, profileName);
         toast('Account created successfully!');
       } else {
-        await Cloud.login(username, password);
+        await Cloud.login(email, password);
         toast('Logged in successfully!');
       }
       closeAuthModal();
