@@ -922,6 +922,13 @@
     }
     .auth-close:hover { background: rgba(255,255,255,0.16); }
     .auth-card-wrap { position: relative; }
+    .auth-resend {
+      background: none; border: none; color: var(--accent); cursor: pointer;
+      font-family: inherit; font-size: 0.82rem; padding: 0; margin-top: 0.3rem;
+      text-decoration: underline; display: inline;
+    }
+    .auth-resend:hover { color: var(--accent-h); }
+    .auth-resend:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ─────────────── CONTINUE WATCHING ROW ─────────────── */
     .cw-card {
@@ -1258,7 +1265,10 @@
           <input type="password" id="auth-password" placeholder="At least 6 characters" autocomplete="current-password" />
         </div>
       </div>
-      <div class="auth-error" id="auth-error"></div>
+      <div class="auth-error" id="auth-error">
+        <span id="auth-error-text"></span>
+        <button class="auth-resend" id="auth-resend" style="display:none">Resend confirmation email</button>
+      </div>
       <button class="auth-submit" id="auth-submit">Sign In</button>
     </div>
   </div>
@@ -2465,13 +2475,16 @@ function initProfileSystem() {
 
 /* ─── AUTH SYSTEM ─── */
 let currentAuthTab = 'login';
+let pendingConfirmationEmail = null;
 
 function openAuthModal() {
   $('auth-backdrop').classList.add('open');
   $('auth-email').value = '';
   $('auth-password').value = '';
   $('auth-error').classList.remove('show');
-  $('auth-error').textContent = '';
+  $('auth-error-text').textContent = '';
+  $('auth-resend').style.display = 'none';
+  pendingConfirmationEmail = null;
   switchAuthTab('login');
   $('auth-email').focus();
 }
@@ -2490,18 +2503,24 @@ function switchAuthTab(tab) {
     : 'Create an account to sync your data across devices.';
   $('auth-submit').textContent = tab === 'login' ? 'Sign In' : 'Create Account';
   $('auth-error').classList.remove('show');
-  $('auth-error').textContent = '';
+  $('auth-error-text').textContent = '';
+  $('auth-resend').style.display = 'none';
+  pendingConfirmationEmail = null;
 }
 
 async function handleAuthSubmit() {
   const email = $('auth-email').value.trim();
   const password = $('auth-password').value;
   const errorEl = $('auth-error');
+  const errorText = $('auth-error-text');
+  const resendBtn = $('auth-resend');
   errorEl.classList.remove('show');
-  errorEl.textContent = '';
+  errorText.textContent = '';
+  resendBtn.style.display = 'none';
+  pendingConfirmationEmail = null;
 
-  if (!email) { errorEl.textContent = 'Enter your email address.'; errorEl.classList.add('show'); return; }
-  if (!password || password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; errorEl.classList.add('show'); return; }
+  if (!email) { errorText.textContent = 'Enter your email address.'; errorEl.classList.add('show'); return; }
+  if (!password || password.length < 6) { errorText.textContent = 'Password must be at least 6 characters.'; errorEl.classList.add('show'); return; }
 
   const btn = $('auth-submit');
   btn.disabled = true;
@@ -2521,11 +2540,34 @@ async function handleAuthSubmit() {
     updateNavbarProfile();
     refreshUserRows();
   } catch (err) {
-    errorEl.textContent = err.message;
+    errorText.textContent = err.message;
     errorEl.classList.add('show');
+    if (err.message.includes('confirmation link') || err.message.includes('confirm it')) {
+      pendingConfirmationEmail = email;
+      resendBtn.style.display = 'block';
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = currentAuthTab === 'login' ? 'Sign In' : 'Create Account';
+  }
+}
+
+async function handleResend() {
+  if (!pendingConfirmationEmail) return;
+  const btn = $('auth-resend');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    await Cloud.resendConfirmation(pendingConfirmationEmail);
+    toast('Confirmation email sent! Check your inbox.');
+    pendingConfirmationEmail = null;
+    btn.style.display = 'none';
+  } catch (err) {
+    $('auth-error-text').textContent = err.message;
+    $('auth-error').classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Resend confirmation email';
   }
 }
 
@@ -2551,6 +2593,10 @@ function updateSidebarAuth() {
 async function initAuthSystem() {
   if (!window.Cloud) return;
 
+  Cloud.onSyncError(function(msg) {
+    console.warn('[Sync]', msg);
+  });
+
   try {
     const user = await Cloud.restoreSession();
     if (user) {
@@ -2565,12 +2611,15 @@ async function initAuthSystem() {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.authTab));
   });
   $('auth-submit').addEventListener('click', handleAuthSubmit);
+  $('auth-resend').addEventListener('click', handleResend);
   $('auth-close').addEventListener('click', closeAuthModal);
   $('auth-backdrop').addEventListener('click', (e) => {
     if (e.target === $('auth-backdrop')) closeAuthModal();
   });
-  $('auth-password').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleAuthSubmit();
+  ['auth-email', 'auth-password'].forEach(id => {
+    $(id).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleAuthSubmit();
+    });
   });
 
   $('sidebar-signin-btn').addEventListener('click', () => {
@@ -2796,7 +2845,7 @@ function refreshUserRows() {
     if ($('auth-backdrop').classList.contains('open')) {
       const s = [];
       s.push({ key: null, items: [$('auth-email'), $('auth-password')].filter(vis) });
-      s.push({ key: null, items: [$('auth-submit')].filter(vis) });
+      s.push({ key: null, items: [$('auth-submit'), $('auth-resend')].filter(function(el) { return el.style.display !== 'none' && vis(el); }) });
       return s;
     }
     // Modal open → trap focus inside it
