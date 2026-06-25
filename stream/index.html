@@ -12,6 +12,8 @@
   <link rel="icon" href="../assets/icons/icon_48.png" sizes="48x48">
   <link rel="icon" href="../assets/icons/icon_64.png" sizes="64x64">
   <link rel="icon" href="../assets/icons/icon_128.png" sizes="128x128">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/db.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -348,6 +350,7 @@ const History = {
   _get() { try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch { return []; } },
   _save(list) {
     localStorage.setItem(this.KEY, JSON.stringify(list));
+    if (window.Cloud) { try { Cloud.sync(); } catch(e) {} }
   },
   add(item) {
     const list = this._get();
@@ -376,6 +379,7 @@ const Progress = {
   _get() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch { return {}; } },
   _save(data) {
     localStorage.setItem(this.KEY, JSON.stringify(data));
+    if (window.Cloud) { try { Cloud.sync(); } catch(e) {} }
   },
   _key(id, type) { return `${type}-${id}`; },
   set(item, extra = {}) {
@@ -715,6 +719,8 @@ $('back-btn').addEventListener('click', () => {
 
 /* ─── INIT ─── */
 (async function init() {
+  if (window.Cloud) { try { await Cloud.restoreSession(); } catch(e) {} }
+
   state = readParams();
   if (!state) {
     $('main').innerHTML = `
