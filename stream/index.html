@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GedaTv — Watch</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../assets/js/db.js?v=20260624-auth2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -350,7 +348,6 @@ const History = {
   _get() { try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch { return []; } },
   _save(list) {
     localStorage.setItem(this.KEY, JSON.stringify(list));
-    if (window.Cloud) Cloud.sync();
   },
   add(item) {
     const list = this._get();
@@ -379,7 +376,6 @@ const Progress = {
   _get() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch { return {}; } },
   _save(data) {
     localStorage.setItem(this.KEY, JSON.stringify(data));
-    if (window.Cloud) Cloud.sync();
   },
   _key(id, type) { return `${type}-${id}`; },
   set(item, extra = {}) {
@@ -731,24 +727,15 @@ $('back-btn').addEventListener('click', () => {
     return;
   }
 
-  // Pre-load cloud database sync data
-  if (window.Cloud) {
-    Cloud.init();
-    try {
-      await Cloud.pull();
-      const localProg = JSON.parse(localStorage.getItem('gedatv_progress') || '{}');
-      const progressKey = `${state.type}-${state.id}`;
-      const savedProg = localProg[progressKey];
-      
-      const urlParams = new URLSearchParams(location.search);
-      if (!urlParams.has('t') && savedProg && savedProg.progress) {
-        const totalSeconds = state.type === 'movie' ? 7200 : 2700;
-        state.timestamp = Math.round(savedProg.progress * totalSeconds);
-        state.initialProgressSeconds = state.timestamp;
-      }
-    } catch (e) {
-      console.warn("Could not sync cloud data before play:", e);
-    }
+  const localProg = JSON.parse(localStorage.getItem('gedatv_progress') || '{}');
+  const progressKey = `${state.type}-${state.id}`;
+  const savedProg = localProg[progressKey];
+  
+  const urlParams = new URLSearchParams(location.search);
+  if (!urlParams.has('t') && savedProg && savedProg.progress) {
+    const totalSeconds = state.type === 'movie' ? 7200 : 2700;
+    state.timestamp = Math.round(savedProg.progress * totalSeconds);
+    state.initialProgressSeconds = state.timestamp;
   }
 
   buildServers();
