@@ -315,6 +315,7 @@ const SERVERS = [
   { id: 4, name: 'Ekko',    note: 'May have 4K. Generally better quality.' },
   { id: 5, name: 'Naafiri', note: 'May have 4K. Generally better quality.' },
   { id: 6, name: 'Ryze',    note: 'Generally better quality.' },
+  { id: 7, name: 'CinemaOS', note: 'CinemaOS embedded player.' },
 ];
 
 /* Exact streaming source resolvers (ported from the original player) */
@@ -324,7 +325,8 @@ const serverUrlResolvers = {
   3: (p) => p.type === 'movie' ? `https://vidsrc-embed.ru/embed/movie?tmdb=${p.id}&autoplay=1` : `https://vidsrc-embed.ru/embed/tv?tmdb=${p.id}&season=${p.season}&episode=${p.episode}&autoplay=1`,                        // Xayah
   4: (p) => p.type === 'movie' ? `https://player.videasy.net/movie/${p.id}` : `https://player.videasy.net/tv/${p.id}/${p.season}/${p.episode}?nextEpisode=true&episodeSelector=true`,                          // Ekko
   5: (p) => p.type === 'movie' ? `https://vidfast.pro/movie/${p.id}?autoPlay=true` : `https://vidfast.pro/tv/${p.id}/${p.season}/${p.episode}?autoPlay=true`,                                                   // Naafiri
-  6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true` // Ryze
+  6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true`, // Ryze
+  7: (p) => p.type === 'movie' ? `https://cinemaos.live/watch/movie/${p.id}` : `https://cinemaos.live/watch/tv/${p.id}?season=${p.season}&episode=${p.episode}` // CinemaOS
 };
 
 /* ─── STATE ─── */
