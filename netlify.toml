@@ -1,8 +1,19 @@
-# Netlify configuration for GedaTv
+# Netlify configuration for SanuFlix
 # Static site — no build step needed
 
 [build]
   publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
+# Serve CinemaOS through our origin so its Febbox token can be initialized
+# before the embedded app starts.
+[[redirects]]
+  from = "/cinemaos/*"
+  to = "/.netlify/functions/cinemaos/:splat"
+  status = 200
+  force = true
 
 # SPA-style fallback for clean URLs
 [[redirects]]

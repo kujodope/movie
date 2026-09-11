@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GedaTv — Watch</title>
+  <title>SanuFlix — Watch</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,20 +17,20 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0a0a0d;
-      --bg-elev:   #111116;
-      --card:      #18181f;
-      --card-h:    #21212a;
-      --line:      rgba(255,255,255,0.08);
-      --accent:    #e50914;
-      --accent-h:  #ff222e;
-      --accent-soft: rgba(229,9,20,0.16);
-      --text:      #f4f4f7;
-      --muted:     #9a9aa6;
+      --bg:        #1a121b;
+      --bg-elev:   #261827;
+      --card:      #302030;
+      --card-h:    #3d2940;
+      --line:      rgba(247,190,216,0.16);
+      --accent:    #f05a78;
+      --accent-h:  #ff86a0;
+      --accent-soft: rgba(240,90,120,0.18);
+      --text:      #ffeaf3;
+      --muted:     #c5a9c0;
       --green:     #4ad17e;
-      --radius:    8px;
-      --radius-lg: 16px;
-      --shadow:    0 18px 50px rgba(0,0,0,0.6);
+      --radius:    18px;
+      --radius-lg: 26px;
+      --shadow:    0 18px 50px rgba(0,0,0,0.45);
       --ease:      cubic-bezier(.2,.7,.2,1);
       --gutter:    clamp(1rem, 4vw, 3rem);
     }
@@ -62,7 +62,7 @@
       display: flex; align-items: center; gap: clamp(.8rem, 2vw, 1.6rem);
       padding: 0 var(--gutter); height: 64px;
       border-bottom: 1px solid var(--line);
-      background: rgba(9,9,12,0.86);
+      background: rgba(26,18,27,0.9);
       backdrop-filter: blur(16px) saturate(140%);
       position: sticky; top: 0; z-index: 50;
     }
@@ -170,7 +170,7 @@
     .field-label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.45rem; }
     .sel {
       width: 100%; padding: 0.65rem 2.2rem 0.65rem 0.85rem;
-      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 999px;
       color: var(--text); font-family: inherit; font-size: 0.88rem; font-weight: 500;
       outline: none; cursor: pointer; transition: border-color .2s, box-shadow .2s;
       appearance: none; -webkit-appearance: none;
@@ -178,11 +178,11 @@
       background-repeat: no-repeat; background-position: right 0.8rem center;
     }
     .sel:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-    .sel option { background: #16161c; color: var(--text); }
+    .sel option { background: var(--card); color: var(--text); }
 
     .nextep-btn {
       width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.7rem; border-radius: 7px; border: 1px solid var(--line);
+      padding: 0.7rem; border-radius: 999px; border: 1px solid var(--line);
       background: rgba(255,255,255,0.05); color: var(--text);
       font-size: 0.88rem; font-weight: 700; cursor: pointer;
       transition: background .2s, border-color .2s, opacity .2s;
@@ -196,6 +196,7 @@
       display: flex; align-items: center; gap: 0.75rem; text-align: left;
       padding: 0.7rem 0.85rem; border: 1px solid var(--line); border-radius: var(--radius);
       background: var(--card); color: var(--text); cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.16);
       transition: background .18s, border-color .18s, transform .15s var(--ease);
     }
     .server-card:hover { background: var(--card-h); border-color: rgba(255,255,255,0.18); transform: translateY(-1px); }
@@ -227,13 +228,13 @@
     .fatal h2 { font-family: 'Bricolage Grotesque'; font-size: 1.6rem; color: var(--text); margin-bottom: 0.6rem; }
     .fatal a {
       display: inline-block; margin-top: 1.2rem; padding: 0.7rem 1.6rem;
-      background: #fff; color: #0a0a0d; border-radius: 7px; font-weight: 700;
+      background: linear-gradient(135deg, #ff9ab0, #f05a78); color: #351827; border-radius: 999px; font-weight: 700;
     }
 
     /* ─── TV / D-PAD FOCUS ───
        Visuals for the key-nav engine (script at the bottom); only active
        while html.keynav is set, i.e. when navigating with arrows/remote. */
-    html.keynav .kf { outline: 3px solid var(--accent-h); outline-offset: 2px; border-radius: 8px; }
+    html.keynav .kf { outline: 3px solid var(--accent-h); outline-offset: 2px; border-radius: var(--radius); }
     html.keynav .server-card.kf { border-color: var(--accent); background: var(--card-h); }
     html.keynav .back-btn.kf { outline-offset: 1px; border-radius: 50%; }
     html.keynav .player-wrap.kf { outline: 3px solid var(--accent); outline-offset: 3px; }
@@ -249,6 +250,16 @@
       .logo { font-size: 1.3rem; }
       .now-title { font-size: 0.85rem; }
     }
+    body::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(185,166,255,0.06), transparent 42%, rgba(255,182,217,0.04)); z-index: 0; }
+    header, main { position: relative; z-index: 1; }
+    header { border-bottom-color: rgba(255,182,217,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
+    .logo { text-shadow: 0 0 24px rgba(255,182,217,0.55); }
+    .player-wrap { border-color: rgba(255,182,217,0.24); box-shadow: var(--shadow), 0 0 0 4px rgba(185,166,255,0.06); }
+    .panel { background: linear-gradient(135deg, rgba(48,32,48,0.96), rgba(38,24,39,0.88)); box-shadow: 0 14px 28px rgba(0,0,0,0.2), inset 0 1px rgba(255,255,255,0.06); }
+    .server-card:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 8px 18px rgba(240,90,120,0.14); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body>
@@ -257,7 +268,7 @@
     <button class="back-btn" id="back-btn" title="Back" aria-label="Back">
       <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
-    <div class="logo" id="logo">GedaTv</div>
+    <div class="logo" id="logo">SanuFlix</div>
     <div class="now-title" id="now-title">Loading…</div>
 
   </header>
@@ -299,7 +310,7 @@
 /* ─── CONFIG ─── */
 const API_BASE = "https://api.themoviedb.org/3";
 const HEADERS = {
-  // Same TMDB token placeholder as the main GedaTv index.html.
+  // Same TMDB token placeholder as the main SanuFlix index.html.
   // Make sure your deploy step injects __TMDB_TOKEN__ into this file too,
   // or paste your read token here directly.
   'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MmNhNTgwNzcwOGI1ZDQyNjcxZjcyNzZlNDY0OWEyYSIsIm5iZiI6MTc3NDUyMjc3NC44NjA5OTk4LCJzdWIiOiI2OWM1MTE5Njg0NGY5N2VkMDkxYzgzZGEiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.FKIXFMFSbJgI5kG8-Iyzqumkj9clASQzmmXCl2QMJec',
@@ -307,6 +318,7 @@ const HEADERS = {
 };
 
 const STORAGE_KEY = 'gedatv_server';
+const DEFAULT_SERVER = 7;
 
 const SERVERS = [
   { id: 1, name: 'CineSRC', note: 'Embedded CineSRC player.' },
@@ -326,7 +338,7 @@ const serverUrlResolvers = {
   4: (p) => p.type === 'movie' ? `https://player.videasy.net/movie/${p.id}` : `https://player.videasy.net/tv/${p.id}/${p.season}/${p.episode}?nextEpisode=true&episodeSelector=true`,                          // Ekko
   5: (p) => p.type === 'movie' ? `https://vidfast.pro/movie/${p.id}?autoPlay=true` : `https://vidfast.pro/tv/${p.id}/${p.season}/${p.episode}?autoPlay=true`,                                                   // Naafiri
   6: (p) => p.type === 'movie' ? `https://vidlink.pro/movie/${p.id}?title=true&poster=true&autoplay=true` : `https://vidlink.pro/tv/${p.id}/${p.season}/${p.episode}?title=true&poster=true&autoplay=true&nextbutton=true`, // Ryze
-  7: (p) => p.type === 'movie' ? `https://cinemaos.live/watch/movie/${p.id}` : `https://cinemaos.live/watch/tv/${p.id}?season=${p.season}&episode=${p.episode}` // CinemaOS
+  7: (p) => p.type === 'movie' ? `/cinemaos/watch/movie/${p.id}` : `/cinemaos/watch/tv/${p.id}?season=${p.season}&episode=${p.episode}` // CinemaOS
 };
 
 /* ─── STATE ─── */
@@ -448,7 +460,7 @@ function readParams() {
   let server = parseInt(p.get('server'), 10);
   if (!server || !serverUrlResolvers[server]) {
     const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-    server = (saved && serverUrlResolvers[saved]) ? saved : 1;
+    server = (saved && serverUrlResolvers[saved]) ? saved : DEFAULT_SERVER;
   }
 
   const timestamp = parseInt(p.get('t'), 10) || null;
@@ -532,7 +544,7 @@ function updateTitleBar() {
   $('now-title').innerHTML = state.type === 'tv'
     ? `${esc(base)} <span class="ep-tag">· S${state.season} E${state.episode}</span>`
     : esc(base);
-  document.title = `${base} — GedaTv`;
+  document.title = `${base} — SanuFlix`;
 }
 
 /* ─── SERVERS ─── */
@@ -688,9 +700,9 @@ function showFatal() {
     <div class="fatal">
       <h2>Title not found</h2>
       <p>This title does not exist or could not be loaded.</p>
-      <a href="/">Back to GedaTv</a>
+      <a href="/">Back to SanuFlix</a>
     </div>`;
-  document.title = 'GedaTv';
+  document.title = 'SanuFlix';
 }
 function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtDate(d){
@@ -722,9 +734,9 @@ $('back-btn').addEventListener('click', () => {
       <div class="fatal">
         <h2>Nothing to play</h2>
         <p>This link is missing the title information.</p>
-        <a href="/">Back to GedaTv</a>
+        <a href="/">Back to SanuFlix</a>
       </div>`;
-    document.title = 'GedaTv';
+    document.title = 'SanuFlix';
     return;
   }
 
